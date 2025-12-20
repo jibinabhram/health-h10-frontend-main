@@ -16,6 +16,9 @@ import ClubAdminHome from '../screens/ClubAdmin/ClubAdminHome';
 import CoachHome from '../screens/Coach/CoachHome';
 import AuthLoadingScreen from '../screens/Auth/AuthLoadingScreen';
 import ProfileEditScreen from '../screens/SuperAdmin/ProfileEditScreen';
+import CreateClub from '../screens/SuperAdmin/CreateClub';
+import EditClub from '../screens/SuperAdmin/EditClub';
+
 export type RootStackParamList = {
   AuthLoadingScreen: undefined;
   Login: undefined;
@@ -26,7 +29,9 @@ export type RootStackParamList = {
   SuperAdminHome: undefined;
   ClubAdminHome: undefined;
   CoachHome: undefined;
-  ProfileEdit: undefined;  
+  ProfileEdit: undefined;
+  CreateClub: undefined;
+  EditClub: { club: any };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -46,7 +51,9 @@ const AppNavigator = () => {
         <Stack.Screen name="SuperAdminHome" component={SuperAdminHome} />
         <Stack.Screen name="ClubAdminHome" component={ClubAdminHome} />
         <Stack.Screen name="CoachHome" component={CoachHome} />
-        <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} /> 
+        <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+        <Stack.Screen name="CreateClub" component={CreateClub} />
+        <Stack.Screen name="EditClub" component={EditClub} />
       </Stack.Navigator>
     </NavigationContainer>
   );

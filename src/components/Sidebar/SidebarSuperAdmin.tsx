@@ -21,7 +21,6 @@ const HEADER_HEIGHT = 56; // ✅ EXACT MATCH WITH NAVBAR
 
 const MENU_ITEMS = [
   'Dashboard',
-  'CreateClub',
   'CreateCoach',
   'Clubs',
   'ClubAdmins',
