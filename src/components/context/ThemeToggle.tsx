@@ -12,7 +12,7 @@ const ThemeToggle = () => {
       <Ionicons
         name={theme === 'dark' ? 'sunny' : 'moon'}
         size={22}
-        color={theme === 'dark' ? '#FACC15' : '#0F172A'}
+        color={theme === 'dark' ? '#FFFFFF' : '#FFFFFF'}
       />
     </TouchableOpacity>
   );

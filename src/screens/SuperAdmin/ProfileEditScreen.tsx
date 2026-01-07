@@ -1,5 +1,4 @@
-// ProfileEditScreen.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +12,13 @@ import {
 import { launchImageLibrary } from 'react-native-image-picker';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+
+import SidebarSuperAdmin, {
+  ScreenType,
+} from '../../components/Sidebar/SidebarSuperAdmin';
+import SuperAdminNavbar from '../../components/Navbar/SuperAdminNavbar';
 
 import {
   fetchProfile,
@@ -23,9 +28,9 @@ import {
   uploadClubAdminImage,
 } from '../../api/auth';
 import { API_BASE_URL } from '../../utils/constants';
+import { useTheme } from '../../components/context/ThemeContext';
 
 /* ================= TYPES ================= */
-
 type PickedImage = {
   uri: string;
   name: string;
@@ -42,14 +47,23 @@ const PROFILE_CACHE_KEY = 'CACHED_PROFILE';
 
 const ProfileEditScreen = () => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const isMounted = useRef(true);
 
+  const isDark = theme === 'dark';
   const [role, setRole] = useState<Role | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
+  /* ===== SIDEBAR STATE ===== */
+  const [activeScreen, setActiveScreen] =
+    useState<ScreenType>('ProfileEdit');
+  const [collapsed, setCollapsed] = useState(false);
+
+  /* ===== FORM STATE ===== */
+  const [superAdminId, setSuperAdminId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-
   const [photo, setPhoto] = useState<PickedImage | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
@@ -98,7 +112,14 @@ const ProfileEditScreen = () => {
   };
 
   /* ================= LOAD PROFILE ================= */
+  /* ===== CLEANUP ===== */
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
+  /* ===== LOAD PROFILE ===== */
   useEffect(() => {
     let active = true;
 
@@ -135,14 +156,14 @@ const ProfileEditScreen = () => {
       response => {
         if (response.didCancel || response.errorCode) return;
 
-        const asset = response.assets?.[0];
-        if (!asset?.uri) return;
+      const asset = response.assets?.[0];
+      if (!asset?.uri) return;
 
-        setPhoto({
-          uri: asset.uri,
-          name: asset.fileName ?? `profile_${Date.now()}.jpg`,
-          type: asset.type ?? 'image/jpeg',
-        });
+      setPhoto({
+        uri: asset.uri,
+        name: asset.fileName ?? `profile_${Date.now()}.jpg`,
+        type: asset.type ?? 'image/jpeg',
+      });
 
         setPhotoUri(asset.uri);
       },
@@ -178,114 +199,221 @@ const ProfileEditScreen = () => {
         if (photo) await uploadClubAdminImage(userId, photo);
       }
 
+      setTimeout(() => {
+        if (!isMounted.current) return;
+
       Alert.alert('Success', 'Profile updated successfully', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
+        Alert.alert('Success', 'Profile updated successfully', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setActiveScreen('Dashboard');
+              navigation.replace('SuperAdminHome');
+            },
+          },
+        ]);
+      }, 100);
     } catch (err: any) {
-      console.log('PROFILE UPDATE ERROR', err?.response?.data || err);
-      Alert.alert(
-        'Error',
-        err?.response?.data?.message || 'Failed to update profile',
-      );
+      if (isMounted.current) {
+        Alert.alert(
+          'Error',
+          err?.response?.data?.message || 'Failed to update profile',
+        );
+      }
     }
   };
 
   /* ================= UI ================= */
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* 👤 PROFILE IMAGE */}
-      <View style={styles.photoContainer}>
-        {photoUri ? (
-          <Image source={{ uri: photoUri }} style={styles.photo} />
-        ) : (
-          <View style={[styles.photo, styles.photoPlaceholder]}>
-            <Text style={styles.photoPlaceholderText}>Add Photo</Text>
-          </View>
-        )}
+    <View
+      style={[
+        styles.safeArea,
+        { backgroundColor: isDark ? '#020617' : '#F1F5F9' },
+      ]}
+    >
+      <SuperAdminNavbar />
 
-        <TouchableOpacity style={styles.photoButton} onPress={handleChoosePhoto}>
-          <Text style={styles.photoButtonText}>Change Picture</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* NAME */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Name</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} />
-      </View>
-
-      {/* EMAIL */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
+      <View style={styles.body}>
+        {/* SIDEBAR */}
+        <SidebarSuperAdmin
+          active={activeScreen}
+          setActive={setActiveScreen}
+          collapsed={collapsed}
+          toggleSidebar={() => setCollapsed(v => !v)}
         />
-      </View>
 
-      {/* PHONE */}
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Phone Number</Text>
-        <TextInput
-          style={styles.input}
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-        />
-      </View>
+        {/* CONTENT (FIXED) */}
+        <View style={styles.contentWrapper}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.content,
+              { backgroundColor: isDark ? '#020617' : '#f4f5f7' },
+            ]}
+          >
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: isDark ? '#0F172A' : '#ffffff' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.title,
+                  { color: isDark ? '#E5E7EB' : '#020617' },
+                ]}
+              >
+                Edit Profile
+              </Text>
 
-      {/* SAVE */}
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Save</Text>
-      </TouchableOpacity>
-    </ScrollView>
+              <Text
+                style={[
+                  styles.subtitle,
+                  { color: isDark ? '#94A3B8' : '#64748b' },
+                ]}
+              >
+                Manage your personal information
+              </Text>
+
+              {/* AVATAR */}
+            <View style={styles.profileHeader}>
+              <TouchableOpacity onPress={handleChoosePhoto}>
+                <View>
+                  {photoUri ? (
+                    <Image source={{ uri: photoUri }} style={styles.avatar} />
+                  ) : (
+                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                      <Ionicons name="person" size={36} color="#9ca3af" />
+                    </View>
+                  )}
+
+                  {/* CAMERA ICON – RIGHT */}
+                  <View style={styles.cameraIconRight}>
+                    <Ionicons name="camera" size={14} color="#020617" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+
+              {/* FORM */}
+              <Text style={[styles.label, { color: isDark ? '#E5E7EB' : '#020617' }]}>
+                Full Name
+              </Text>
+              <TextInput
+                style={[styles.input, { color: isDark ? '#E5E7EB' : '#020617' }]}
+                value={name}
+                onChangeText={setName}
+              />
+
+              <Text style={[styles.label, { color: isDark ? '#E5E7EB' : '#020617' }]}>
+                Email Address
+              </Text>
+              <TextInput
+                style={[styles.input, { color: isDark ? '#E5E7EB' : '#020617' }]}
+                value={email}
+                onChangeText={setEmail}
+              />
+
+              <Text style={[styles.label, { color: isDark ? '#E5E7EB' : '#020617' }]}>
+                Phone Number
+              </Text>
+              <TextInput
+                style={[styles.input, { color: isDark ? '#E5E7EB' : '#020617' }]}
+                value={phone}
+                onChangeText={setPhone}
+              />
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                <Text style={styles.saveText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
   );
 };
 
-/* ================= STYLES ================= */
-
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 20,
-    paddingVertical: 30,
-    flexGrow: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  photoContainer: { alignItems: 'center', marginBottom: 30 },
-  photo: { width: 110, height: 110, borderRadius: 55 },
-  photoPlaceholder: { justifyContent: 'center', alignItems: 'center' },
-  photoPlaceholderText: { color: '#666', fontSize: 12 },
-  photoButton: {
-    marginTop: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  photoButtonText: { color: '#007AFF', fontWeight: '500' },
-  fieldContainer: { marginBottom: 18 },
-  label: { fontSize: 14, color: '#555', marginBottom: 6 },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  saveButton: {
-    marginTop: 30,
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-});
-
 export default ProfileEditScreen;
+
+/* ================= STYLES ================= */
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+
+  body: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+
+  contentWrapper: {
+    flex: 1, // 🔥 THIS IS THE FIX
+  },
+
+  content: {
+    flexGrow: 1,
+    padding: 20,
+  },
+
+  card: { borderRadius: 18, padding: 20 },
+  title: { fontSize: 22, fontWeight: '800' },
+  subtitle: { fontSize: 13, marginBottom: 20 },
+
+profileHeader: {
+  alignItems: 'flex-start',   // 👈 LEFT alignment
+  marginBottom: 20,
+},
+
+avatar: {
+  width: 96,
+  height: 96,
+  borderRadius: 48,
+},
+
+avatarPlaceholder: {
+  backgroundColor: '#e5e7eb',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+cameraIconRight: {
+  position: 'absolute',
+  bottom: 0,
+  right: 0,          // ✅ RIGHT SIDE
+  backgroundColor: '#e5e7eb',
+  padding: 6,
+  borderRadius: 16,
+},
+
+
+  cameraIcon: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: '#e5e7eb',
+    padding: 6,
+    borderRadius: 20,
+  },
+
+  label: { fontSize: 13, marginBottom: 6 },
+  input: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 14,
+  },
+
+ saveButton: {
+   backgroundColor: '#3b82f6',
+   paddingVertical: 14,
+   paddingHorizontal: 28,
+   borderRadius: 12,
+   alignSelf: 'flex-start',
+ },
+
+  saveText: { color: '#fff', fontWeight: '700' },
+});

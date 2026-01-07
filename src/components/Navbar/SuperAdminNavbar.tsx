@@ -1,5 +1,6 @@
 // src/components/SuperAdminNavbar.tsx
 import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -39,21 +40,14 @@ type Props = {
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
-/* ================= CONSTANTS ================= */
-
 const { width, height } = Dimensions.get('window');
 
 const HEADER_HEIGHT = 56;
 const TOP_PADDING =
   Platform.OS === 'android' ? StatusBar.currentHeight || 12 : 20;
 
-/* ================= COMPONENT ================= */
-
-const SuperAdminNavbar: React.FC<Props> = ({
-  title,
-  toggleSidebar,
-  sidebarOpen,
-}) => {
+const SuperAdminNavbar = () => {
+  /* ✅ ALL HOOKS AT TOP — STABLE ORDER */
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const navigation = useNavigation<NavProp>();
@@ -65,12 +59,12 @@ const SuperAdminNavbar: React.FC<Props> = ({
 
   useFocusEffect(
     React.useCallback(() => {
-      let active = true;
+      let mounted = true;
 
       (async () => {
         // 1️⃣ Load cached profile FIRST (offline support)
         const cached = await loadProfileFromCache();
-        if (cached && active) {
+        if (cached && mounted) {
           setUser(cached);
         }
 
@@ -81,7 +75,7 @@ const SuperAdminNavbar: React.FC<Props> = ({
         // 3️⃣ Fetch fresh profile
         try {
           const profile = await fetchProfile();
-          if (!profile || !active) return;
+          if (!profile || !mounted) return;
 
           setUser(profile);
 
@@ -117,50 +111,48 @@ const SuperAdminNavbar: React.FC<Props> = ({
     await logout(navigation);
   };
 
-  /* ================= UI ================= */
-
   return (
-    <View style={{ zIndex: 1000 }}>
-      {profileOpen && (
-        <Pressable
-          style={styles.overlay}
-          onPress={() => setProfileOpen(false)}
-        />
-      )}
+    <View style={styles.container}>
+      {/* STATUS BAR */}
+      {/* STATUS BAR */}
+      <StatusBar
+        translucent={false}
+        backgroundColor="#2F343B"          // same as navbar
+        barStyle="light-content"           // white icons
+      />
 
       <View
         style={[
           styles.navbar,
           {
-            backgroundColor: isDark ? '#020617' : '#FFFFFF',
+            backgroundColor: isDark ? '#2F343B' : '#2F343B',
             paddingTop: TOP_PADDING,
             height: HEADER_HEIGHT + TOP_PADDING,
           },
         ]}
       >
-        {!sidebarOpen && (
-          <TouchableOpacity onPress={toggleSidebar} style={styles.iconBtn}>
-            <Ionicons
-              name="menu"
-              size={26}
-              color={isDark ? '#E5E7EB' : '#020617'}
-            />
-          </TouchableOpacity>
-        )}
-
-        <Text
-          style={[
-            styles.title,
-            { color: isDark ? '#E5E7EB' : '#020617' },
-          ]}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
+        {/* LOGO */}
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
         <View style={{ flex: 1 }} />
 
-        <ThemeToggle />
+        {/* NOTIFICATION */}
+        <TouchableOpacity style={styles.iconBtn}>
+          <Ionicons
+            name="notifications-outline"
+            size={22}
+            color={isDark ? '#E5E7EB' : '#FFFFFF'}
+          />
+        </TouchableOpacity>
+
+        {/*toggle*/}
+        <View style={{ marginLeft: 16 }}>
+          <ThemeToggle />
+        </View>
 
         {user && (
           <TouchableOpacity
@@ -189,10 +181,21 @@ const SuperAdminNavbar: React.FC<Props> = ({
                 color={isDark ? '#22D3EE' : '#2563EB'}
               />
             )}
+            <Text
+              style={[
+                styles.userName,
+                { color: isDark ? '#FFFFFF' : '#FFFFFF' },
+              ]}
+            >
+              {user.name}
+            </Text>
           </TouchableOpacity>
         )}
+      </View>
 
-        {profileOpen && user && (
+      {/* DROPDOWN */}
+      {profileOpen && (
+        <>
           <View
             style={[
               styles.dropdown,
@@ -201,31 +204,58 @@ const SuperAdminNavbar: React.FC<Props> = ({
           >
             <Text
               style={[
-                styles.profileName,
+                styles.dropdownTitle,
                 { color: isDark ? '#E5E7EB' : '#020617' },
               ]}
             >
-              {user.name || 'Profile'}
+              My Account
             </Text>
-
-            <Text
-              style={[
-                styles.profileEmail,
-                { color: isDark ? '#9CA3AF' : '#475569' },
-              ]}
-            >
-              {user.email || '—'}
-            </Text>
-
-            <View style={styles.divider} />
 
             <TouchableOpacity
               style={styles.dropdownItem}
-              onPress={handleEditProfile}
+              onPress={() => {
+                setProfileOpen(false);
+                navigation.navigate('ProfileEdit');
+              }}
             >
-              <Ionicons name="create-outline" size={18} />
-              <Text style={styles.dropdownText}>Edit Profile</Text>
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={isDark ? '#E5E7EB' : '#020617'}
+              />
+              <Text
+                style={[
+                  styles.dropdownText,
+                  { color: isDark ? '#E5E7EB' : '#020617' },
+                ]}
+              >
+                Edit Profile
+              </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={() => {
+                setProfileOpen(false);
+                navigation.navigate('Settings');
+              }}
+            >
+              <Ionicons
+                name="settings-outline"
+                size={18}
+                color={isDark ? '#E5E7EB' : '#020617'}
+              />
+              <Text
+                style={[
+                  styles.dropdownText,
+                  { color: isDark ? '#E5E7EB' : '#020617' },
+                ]}
+              >
+                Settings
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
 
             <TouchableOpacity
               style={styles.dropdownItem}
@@ -237,21 +267,35 @@ const SuperAdminNavbar: React.FC<Props> = ({
               </Text>
             </TouchableOpacity>
           </View>
-        )}
-      </View>
+
+          {/* OVERLAY */}
+          <Pressable
+            style={styles.overlay}
+            onPress={() => setProfileOpen(false)}
+          />
+        </>
+      )}
     </View>
   );
 };
 
-/* ================= STYLES ================= */
+export default SuperAdminNavbar;
 
+/* ================= STYLES ================= */
 const styles = StyleSheet.create({
+  container: { zIndex: 100 },
+
   navbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    zIndex: 1000,
+    paddingHorizontal: 12,
   },
+
+  logo: {
+    width: 120,
+    height: 36,
+  },
+
   iconBtn: {
     height: 40,
     width: 40,
@@ -261,58 +305,68 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-  },
-  dropdown: {
-    position: 'absolute',
-    top: HEADER_HEIGHT + TOP_PADDING,
-    right: 12,
-    width: 200,
-    borderRadius: 12,
-    paddingVertical: 10,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-  },
-  profileName: {
-    fontSize: 15,
-    fontWeight: '700',
-    paddingHorizontal: 12,
-  },
-  profileEmail: {
-    fontSize: 13,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#1E293B',
-    marginVertical: 6,
-  },
-  dropdownItem: {
+
+  userBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    marginLeft: 8,
   },
-  dropdownText: {
-    marginLeft: 10,
+
+  userName: {
+    marginLeft: 6,
     fontSize: 14,
     fontWeight: '600',
+    maxWidth: 100,
   },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width,
-    height,
-  },
+
   avatar: {
     width: 34,
     height: 34,
     borderRadius: 17,
     borderWidth: 2,
   },
-});
 
-export default SuperAdminNavbar;
+  dropdown: {
+    position: 'absolute',
+    top: HEADER_HEIGHT + TOP_PADDING + 6,
+    right: 12,
+    width: 220,
+    borderRadius: 14,
+    paddingVertical: 10,
+    elevation: 16,
+    zIndex: 1000,
+  },
+
+  dropdownTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 14,
+    marginBottom: 6,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  dropdownText: {
+    marginLeft: 10,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: '#CBD5E1',
+    marginVertical: 6,
+  },
+
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width,
+    height,
+    zIndex: 500,
+  },
+});
