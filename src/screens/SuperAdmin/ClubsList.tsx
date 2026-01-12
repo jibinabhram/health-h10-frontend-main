@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/AppNavigator';
 import { Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { generateClubPdf } from '../../utils/clubPdf';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { deleteClub } from '../../api/clubs';
 import { useRoute } from '@react-navigation/native';
@@ -153,6 +154,15 @@ const ClubsList = () => {
 
                 {/* ACTIONS */}
                 <View style={styles.actions}>
+                  {/* 📄 DOWNLOAD PDF */}
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => generateClubPdf(item)}
+                  >
+                    <Ionicons name="document-text-outline" size={22} color="#059669" />
+                  </TouchableOpacity>
+
+                  {/* ✏️ EDIT */}
                   <TouchableOpacity
                     style={styles.iconBtn}
                     onPress={() => navigation.navigate('EditClub', { clubId: item.club_id })}
@@ -160,6 +170,7 @@ const ClubsList = () => {
                     <Ionicons name="create-outline" size={22} color="#2563EB" />
                   </TouchableOpacity>
 
+                  {/* 🗑 DELETE */}
                   <TouchableOpacity
                     style={styles.iconBtn}
                     onPress={() => handleDelete(item.club_id, item.club_name)}

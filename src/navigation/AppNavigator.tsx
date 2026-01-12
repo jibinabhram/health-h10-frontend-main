@@ -18,7 +18,6 @@ import AuthLoadingScreen from '../screens/Auth/AuthLoadingScreen';
 import ChangePasswordScreen from '../screens/Auth/ChangePasswordScreen';
 
 /* ===== SUPER ADMIN ===== */
-import SuperAdminHome from '../screens/SuperAdmin/SuperAdminHome';
 import ProfileEditScreen from '../screens/SuperAdmin/ProfileEditScreen';
 import CreateClub from '../screens/SuperAdmin/CreateClub';
 import EditClub from '../screens/SuperAdmin/EditClub';

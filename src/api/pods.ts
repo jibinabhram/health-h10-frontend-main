@@ -2,47 +2,34 @@ import { API_BASE_URL } from '../utils/constants';
 
 /* ================= GET ALL PODS ================= */
 export async function fetchPods(): Promise<any[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/pods`);
+  const res = await fetch(`${API_BASE_URL}/pods`);
 
-    if (!res.ok) {
-      console.error('❌ fetchPods HTTP error:', res.status);
-      return [];
-    }
-
-    const json = await res.json();
-
-    /**
-     * ✅ NORMALIZE ALL POSSIBLE SHAPES
-     * 1️⃣ { data: Pod[] }
-     * 2️⃣ { data: { data: Pod[] } }
-     * 3️⃣ anything else → []
-     */
-
-    // Case 1
-    if (Array.isArray(json?.data)) {
-      return json.data;
-    }
-
-    // Case 2 (THIS IS YOUR CURRENT BACKEND)
-    if (Array.isArray(json?.data?.data)) {
-      return json.data.data;
-    }
-
-    console.warn('⚠ fetchPods: unexpected payload shape', json);
-    return [];
-  } catch (err) {
-    console.error('❌ fetchPods failed:', err);
-    return [];
+  if (!res.ok) {
+    console.error('❌ fetchPods HTTP error:', res.status);
+    throw new Error('Failed to fetch pods');
   }
-}
 
+  const json = await res.json();
+
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.data?.data)) return json.data.data;
+
+  console.warn('⚠ fetchPods: unexpected payload shape', json);
+  return [];
+}
 
 /* ================= CREATE PODS BATCH ================= */
 export async function createPodsBatch(
   count: number,
   model?: string,
 ): Promise<{ batch_id: string; created: number } | null> {
+
+  // ✅ HARD GUARD (before fetch)
+  if (!count || count <= 0) {
+    console.warn('⚠️ createPodsBatch skipped: invalid count', count);
+    return null;
+  }
+
   try {
     const res = await fetch(`${API_BASE_URL}/pods/batch`, {
       method: 'POST',
@@ -50,20 +37,25 @@ export async function createPodsBatch(
       body: JSON.stringify({ count, model }),
     });
 
+    if (!res.ok) {
+      console.error('❌ createPodsBatch HTTP error:', res.status);
+      throw new Error('Failed to create pod batch');
+    }
+
     const json = await res.json();
 
-    if (!json || !json.data) {
+    if (!json?.data) {
       console.error('❌ createPodsBatch: missing data', json);
       return null;
     }
 
-    // ✅ This payload is correct — no warning needed
     return json.data;
   } catch (err) {
     console.error('❌ createPodsBatch failed:', err);
     return null;
   }
 }
+
 
 export async function updatePodStatus(
   podId: string,

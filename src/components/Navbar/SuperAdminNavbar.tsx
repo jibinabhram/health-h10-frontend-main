@@ -1,5 +1,4 @@
 // src/components/SuperAdminNavbar.tsx
-import React, { useState } from 'react';
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -90,7 +89,7 @@ const SuperAdminNavbar = () => {
       })();
 
       return () => {
-        active = false;
+        mounted = false;
       };
     }, []),
   );
@@ -305,7 +304,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-
+  },
   userBtn: {
     flexDirection: 'row',
     alignItems: 'center',

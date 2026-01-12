@@ -1,7 +1,14 @@
 import { db } from "../db/sqlite";
 import { syncActivityMetric } from "../api/sync";
 
+let isSyncing = false;
 export async function syncPendingMetrics() {
+  if (isSyncing) {
+    console.log("⏸️ Sync already running");
+    return;
+  }
+
+  isSyncing = true;
   try {
     const res = db.execute(
       `SELECT * FROM calculated_data WHERE synced = 0`

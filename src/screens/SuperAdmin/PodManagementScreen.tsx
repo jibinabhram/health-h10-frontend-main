@@ -153,21 +153,29 @@ const PodManagementScreen = () => {
   }, []);
 
   const loadPods = async () => {
-    const data = await fetchPods();
-    const mapped: Pod[] = data.map((p: any) => ({
-      id: p.pod_id,
-      serial: p.serial_number,
-      deviceId: p.device_id,
-      status: p.lifecycle_status,
-      batchId: p.batch_id,
-    }));
-    setPods(mapped);
+    try {
+      const data = await fetchPods();
 
-    const uniqueBatches = Array.from(
-      new Set(mapped.map(p => p.batchId)),
-    ).sort((a, b) => b.localeCompare(a));
+      const mapped: Pod[] = data.map((p: any) => ({
+        id: p.pod_id,
+        serial: p.serial_number,
+        deviceId: p.device_id,
+        status: p.lifecycle_status,
+        batchId: p.batch_id,
+      }));
 
-    setBatches(['ALL', ...uniqueBatches]);
+      setPods(mapped);
+
+      const uniqueBatches = Array.from(
+        new Set(mapped.map(p => p.batchId)),
+      ).sort((a, b) => b.localeCompare(a));
+
+      setBatches(['ALL', ...uniqueBatches]);
+
+    } catch (err) {
+      console.error('❌ loadPods failed:', err);
+      alert('Failed to load pods from server');
+    }
   };
 
   /* ================= FILTER ================= */
