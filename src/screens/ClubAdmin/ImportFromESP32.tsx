@@ -16,6 +16,9 @@ import { calculateMetricsFromRaw } from "../../services/calculateMetrics.service
 import { exportTrimmedCsv } from "../../services/exportCsv.service";
 import { debugDatabase } from "../../services/debug.service";
 import { safeAlert } from "../../services/safeAlert.service";
+// import { useRoute } from "@react-navigation/native";
+import { RouteProp, useRoute } from "@react-navigation/native";
+import { RootStackParamList } from "../../navigation/AppNavigator";
 
 /* ================= TIME HELPERS ================= */
 
@@ -42,7 +45,7 @@ export default function ImportFromESP32() {
 
   const [files, setFiles] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
@@ -50,6 +53,17 @@ export default function ImportFromESP32() {
 
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const route =
+    useRoute<RouteProp<RootStackParamList, "ImportFromESP32">>();
+  const eventDraft = route.params?.eventDraft ?? null;
+  const comingFromEvent = !!route.params?.file;
+
+  useEffect(() => {
+    if (route.params?.file) {
+      setSelected(route.params.file);
+      setDropdownOpen(false); // 👈 IMPORTANT
+    }
+  }, [route.params?.file]);
 
   useEffect(() => {
     return () => {
@@ -58,14 +72,20 @@ export default function ImportFromESP32() {
   }, []);
 
   useEffect(() => {
-    loadFiles();
-  }, []);
+    if (!route.params?.file) {
+      loadFiles(); // only load list if NOT coming from calendar
+    }
+  }, [route.params?.file]);
 
   const loadFiles = async () => {
     try {
       setLoadingFiles(true);
       const list = await fetchCsvFiles();
-      if (mountedRef.current) setFiles(list);
+
+      if (mountedRef.current) {
+        setFiles(list);
+        setDropdownOpen(true); // 👈 auto show list
+      }
     } catch {
       Alert.alert("ESP32 Not Reachable", "Connect phone to ESP32 Wi-Fi");
     } finally {
@@ -109,9 +129,9 @@ export default function ImportFromESP32() {
         csvText,
         sessionId,
         trimStartMs,
-        trimEndMs
+        trimEndMs,
+        eventDraft || undefined
       );
-
       await calculateMetricsFromRaw(sessionId);
       debugDatabase(sessionId);
 
@@ -147,18 +167,39 @@ export default function ImportFromESP32() {
   return (
     <View style={styles.container}>
       <View style={styles.box}>
+      {eventDraft && (
+        <View style={styles.eventBox}>
+          <Text style={styles.eventTitle}>Event Details</Text>
+
+          <Text style={styles.eventField}>
+            Event Name: {eventDraft.eventName || "—"}
+          </Text>
+
+          <Text style={styles.eventField}>
+            Event Date: {eventDraft.eventDate || "—"}
+          </Text>
+
+          <Text style={styles.eventField}>
+            Event Type: {eventDraft.eventType || "—"}
+          </Text>
+
+          <Text style={styles.eventField}>
+            Location: {eventDraft.location || "—"}
+          </Text>
+
+          <Text style={styles.eventField}>
+            Field: {eventDraft.field || "—"}
+          </Text>
+
+          <Text style={styles.eventField}>
+            Notes: {eventDraft.notes || "—"}
+          </Text>
+        </View>
+      )}
+
         <Text style={styles.label}>Select Match</Text>
 
-        <TouchableOpacity
-          style={styles.dropdown}
-          onPress={() => setDropdownOpen(v => !v)}
-        >
-          <Text style={styles.dropdownText}>
-            {selected ?? "Choose Match"}
-          </Text>
-        </TouchableOpacity>
-
-        {dropdownOpen && (
+        {dropdownOpen && !comingFromEvent && (
           <View style={styles.dropdownList}>
             {loadingFiles ? (
               <ActivityIndicator />
@@ -168,11 +209,11 @@ export default function ImportFromESP32() {
                 keyExtractor={i => i}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      setSelected(item);
-                      setDropdownOpen(false);
-                    }}
+                    style={[
+                      styles.dropdownItem,
+                      selected === item && { backgroundColor: "#e0f2fe" },
+                    ]}
+                    onPress={() => setSelected(item)}
                   >
                     <Text>{item}</Text>
                   </TouchableOpacity>
@@ -293,4 +334,21 @@ const styles = StyleSheet.create({
   },
 
   downloadText: { color: "#fff", fontWeight: "700" },
+  eventBox: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+
+  eventTitle: {
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+
+  eventField: {
+    fontSize: 14,
+    marginBottom: 4,
+    color: "#334155",
+  },
 });

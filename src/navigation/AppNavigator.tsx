@@ -23,9 +23,12 @@ import CreateClub from '../screens/SuperAdmin/CreateClub';
 import EditClub from '../screens/SuperAdmin/EditClub';
 import HomeScreen from "../screens/ClubAdmin/HomeScreen";
 import ImportFromESP32 from "../screens/ClubAdmin/ImportFromESP32";
+import FilesByDate from "../screens/ESP32/FilesByDate";
+import MatchesCalendar from "../screens/ESP32/MatchesCalendar";
 import PerformanceScreen from "../screens/ClubAdmin/PerformanceScreen";
 import CompareScreen from "../screens/ClubAdmin/CompareScreen";
 import SettingsScreen from '../screens/SuperAdmin/SettingsScreen';
+import CreateEventScreen from '../screens/ClubAdmin/CreateEventScreen';
 
 export type RootStackParamList = {
   AuthLoadingScreen: undefined;
@@ -42,10 +45,23 @@ export type RootStackParamList = {
   CreateClub: undefined;
   EditClub: { clubId: string };
   Home: undefined;
-  ImportFromESP32: undefined;
+  MatchesCalendar: undefined;
+  FilesByDate: { date: string };
+  ImportFromESP32: {
+    file?: string;
+    eventDraft?: {
+      eventName: string;
+      eventDate: string;
+      eventType: string;
+      location?: string;
+      field?: string;
+      notes?: string;
+    };
+  };
   Performance: undefined;
   Compare: undefined;
   Settings: undefined;
+  CreateEvent: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -70,10 +86,13 @@ const AppNavigator = () => {
         <Stack.Screen name="EditClub" component={EditClub} />
         <Stack.Screen name="HomeScreen" component={HomeScreen}  options={{ headerShown: false }} />
         <Stack.Screen name="ImportFromESP32" component={ImportFromESP32} options={{ title: "UPLOAD" }} />
+        <Stack.Screen name="MatchesCalendar" component={MatchesCalendar} />
+        <Stack.Screen name="FilesByDate" component={FilesByDate} />
         <Stack.Screen name="Performance" component={PerformanceScreen} />
         <Stack.Screen name="Compare" component={CompareScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

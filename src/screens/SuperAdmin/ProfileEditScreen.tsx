@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import SidebarSuperAdmin, {
   ScreenType,
-} from '../../components/Sidebar/SidebarSuperAdmin';
+} from '../../components/Sidebar/SidebarClubAdmin';
 import SuperAdminNavbar from '../../components/Navbar/SuperAdminNavbar';
 
 import {

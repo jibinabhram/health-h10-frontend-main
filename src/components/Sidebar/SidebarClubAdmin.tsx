@@ -52,17 +52,18 @@ const SidebarClubAdmin = ({ active, setActive, closeSidebar }: any) => {
         <Text style={[styles.itemText, getTextStyle('MyClubCoaches')]}>My Club Coaches</Text>
       </TouchableOpacity>*/}
       <TouchableOpacity
-        style={[styles.item, getItemStyle('Import')]}
+        style={[styles.item, getItemStyle('CreateEvent')]}
         onPress={() => {
-          setActive('Import');
-          navigation.navigate('ImportFromESP32');
+          setActive('CreateEvent');
+          navigation.navigate('CreateEvent');
           closeSidebar();
         }}
       >
-        <Text style={[styles.itemText, getTextStyle('Import')]}>
-          Import Data
+        <Text style={[styles.item, getItemStyle('CreateEvent')]}>
+          Create Event
         </Text>
       </TouchableOpacity>
+
       <TouchableOpacity
         style={[styles.item, getItemStyle('Performance')]}
         onPress={() => {
