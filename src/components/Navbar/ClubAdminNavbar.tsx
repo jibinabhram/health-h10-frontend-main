@@ -1,79 +1,282 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Platform,
+  Pressable,
+  Image,
   StatusBar,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+
+import ThemeToggle from '../context/ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
+import { fetchProfile } from '../../api/auth';
+import { API_BASE_URL } from '../../utils/constants';
+import { logout } from '../../utils/logout';
 
-type Props = {
+const NAVBAR_HEIGHT = 56;
+
+interface Props {
   title: string;
-  toggleSidebar: () => void;
-  sidebarOpen: boolean;
-};
+}
 
-const ClubAdminNavbar: React.FC<Props> = ({
-  title,
-  toggleSidebar,
-  sidebarOpen,
-}) => {
+const ClubAdminNavbar: React.FC<Props> = ({ title }) => {
   const { theme } = useTheme();
+  const navigation = useNavigation<any>();
   const isDark = theme === 'dark';
 
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  /* ===== LOAD PROFILE ===== */
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const profile = await fetchProfile();
+        if (mounted) setUser(profile);
+      } catch (err) {
+        console.log('CLUB ADMIN NAVBAR PROFILE ERROR', err);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* ===== ACTIONS ===== */
+
+  const handleProfileEdit = () => {
+    setProfileOpen(false);
+    navigation.navigate('ProfileEdit');
+  };
+
+  const handleLogout = async () => {
+    setProfileOpen(false);
+    await logout();
+
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
+  };
+
+  /* ===== PROFILE IMAGE HANDLING ===== */
+  const profileImage =
+    user?.profile_image
+      ? user.profile_image.startsWith('http')
+        ? user.profile_image
+        : `${API_BASE_URL}/uploads/${user.profile_image}`
+      : null;
+
   return (
-    <View
-      style={[
-        styles.navbar,
-        {
-          backgroundColor: isDark ? '#020617' : '#FFFFFF',
-          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 44,
-        },
-      ]}
-    >
-      {!sidebarOpen && (
-        <TouchableOpacity onPress={toggleSidebar} style={styles.menuBtn}>
-          <Ionicons
-            name="menu"
-            size={26}
-            color={isDark ? '#E5E7EB' : '#020617'}
-          />
-        </TouchableOpacity>
-      )}
+    <View style={styles.container}>
+      <StatusBar
+        backgroundColor="#2F343B"
+        barStyle="light-content"
+      />
 
-      <Text style={[styles.title, { color: isDark ? '#E5E7EB' : '#020617' }]}>
-        {title}
-      </Text>
-
-      <TouchableOpacity>
-        <Ionicons
-          name="people-outline"
-          size={22}
-          color={isDark ? '#E5E7EB' : '#020617'}
+      {/* ===== NAVBAR ===== */}
+      <View style={styles.navbar}>
+        {/* LOGO (same as SuperAdmin) */}
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
         />
-      </TouchableOpacity>
+
+        <View style={{ flex: 1 }} />
+
+        {/* THEME */}
+        <ThemeToggle />
+
+        {/* USER */}
+        {user && (
+          <TouchableOpacity
+            style={styles.userBtn}
+            onPress={() => setProfileOpen(v => !v)}
+          >
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.avatar}
+              />
+            ) : (
+              <Ionicons
+                name="person-circle-outline"
+                size={34}
+                color="#FFFFFF"
+              />
+            )}
+            <Text style={styles.userName}>
+              {user.name}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* ===== DROPDOWN ===== */}
+      {profileOpen && (
+        <>
+          <Pressable
+            style={styles.overlay}
+            onPress={() => setProfileOpen(false)}
+          />
+
+          <View
+            style={[
+              styles.dropdown,
+              { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.dropdownTitle,
+                { color: isDark ? '#E5E7EB' : '#020617' },
+              ]}
+            >
+              My Account
+            </Text>
+
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={()=>{
+                  setProfileOpen(false);
+                  onNavigate('profileEdit');
+              }}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={isDark ? '#94A3B8' : '#64748B'}
+              />
+              <Text
+                style={[
+                  styles.dropdownText,
+                  { color: isDark ? '#E5E7EB' : '#020617' },
+                ]}
+              >
+                Edit Profile
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={handleLogout}
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={18}
+                color="#EF4444"
+              />
+              <Text
+                style={[
+                  styles.dropdownText,
+                  { color: '#EF4444' },
+                ]}
+              >
+                Sign Out
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </View>
   );
 };
 
+export default ClubAdminNavbar;
+
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
+  container: {
+    zIndex: 100,
+  },
+
   navbar: {
+    height: NAVBAR_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    minHeight: 56,
+    paddingHorizontal: 12,
+    backgroundColor: '#2F343B',
   },
-  menuBtn: {
-    paddingRight: 12,
+
+  logo: {
+    width: 120,
+    height: 36,
   },
-  title: {
-    fontSize: 18,
+
+  userBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+
+  userName: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    maxWidth: 100,
+  },
+
+  avatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: '#22D3EE',
+  },
+
+  dropdown: {
+    position: 'absolute',
+    top: NAVBAR_HEIGHT + 6,
+    right: 12,
+    width: 220,
+    borderRadius: 14,
+    paddingVertical: 10,
+    elevation: 16,
+  },
+
+  dropdownTitle: {
+    fontSize: 15,
     fontWeight: '700',
-    flex: 1,
+    paddingHorizontal: 14,
+    marginBottom: 6,
+  },
+
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+
+  dropdownText: {
+    marginLeft: 10,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: '#CBD5E1',
+    marginVertical: 6,
+  },
+
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 });
-
-export default ClubAdminNavbar;

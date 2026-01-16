@@ -10,12 +10,16 @@ import {
   Alert,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import {
   fetchProfile,
   updateSuperAdminProfile,
   uploadSuperAdminImage,
+  updateClubAdminProfile,
+  uploadClubAdminImage,
 } from '../../api/auth';
 import { API_BASE_URL } from '../../utils/constants';
 import { useTheme } from '../../components/context/ThemeContext';
@@ -27,57 +31,109 @@ type PickedImage = {
   type: string;
 };
 
+type Role = 'SUPER_ADMIN' | 'CLUB_ADMIN';
+
 interface Props {
   goBack: () => void;
 }
 
+/* ================= CONSTANTS ================= */
+const PROFILE_CACHE_KEY = 'CACHED_PROFILE';
+
+/* ================= COMPONENT ================= */
 const ProfileEditScreen = ({ goBack }: Props) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const isMounted = useRef(true);
 
+  const [role, setRole] = useState<Role | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
   /* ===== FORM STATE ===== */
-  const [superAdminId, setSuperAdminId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [photo, setPhoto] = useState<PickedImage | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
-  /* ===== CLEANUP ===== */
+  /* ================= HELPERS ================= */
+  const hydrateProfile = (profile: any) => {
+    if (!profile) return;
+
+    setRole(profile.role);
+    setUserId(
+      profile.role === 'SUPER_ADMIN'
+        ? profile.super_admin_id
+        : profile.admin_id,
+    );
+
+    setName(profile.name ?? '');
+    setEmail(profile.email ?? '');
+    setPhone(profile.phone ?? '');
+
+    if (profile.profile_image) {
+      setPhotoUri(`${API_BASE_URL}/uploads/${profile.profile_image}`);
+    }
+  };
+
+  const loadCachedProfile = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
+      if (raw) hydrateProfile(JSON.parse(raw));
+    } catch (e) {
+      console.log('❌ Failed to load cached profile', e);
+    }
+  };
+
+  const saveProfileToCache = async (profile: any) => {
+    try {
+      await AsyncStorage.setItem(
+        PROFILE_CACHE_KEY,
+        JSON.stringify(profile),
+      );
+    } catch (e) {
+      console.log('❌ Failed to save profile cache', e);
+    }
+  };
+
+  /* ================= LOAD PROFILE ================= */
   useEffect(() => {
     return () => {
       isMounted.current = false;
     };
   }, []);
 
-  /* ===== LOAD PROFILE ===== */
   useEffect(() => {
+    let active = true;
+
     (async () => {
+      await loadCachedProfile();
+
+      const net = await NetInfo.fetch();
+      if (!net.isConnected) return;
+
       try {
-        const user = await fetchProfile();
-        if (!isMounted.current) return;
+        const profile = await fetchProfile();
+        if (!active || !profile) return;
 
-        setSuperAdminId(user.super_admin_id);
-        setName(user.name ?? '');
-        setEmail(user.email ?? '');
-        setPhone(user.phone ?? '');
-
-        if (user.profile_image) {
-          setPhotoUri(`${API_BASE_URL}/uploads/${user.profile_image}`);
-        }
-      } catch {
+        hydrateProfile(profile);
+        await saveProfileToCache(profile);
+      } catch (err) {
         Alert.alert('Error', 'Failed to load profile');
       }
     })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  /* ===== IMAGE PICKER ===== */
+  /* ================= IMAGE PICKER ================= */
   const handleChoosePhoto = () => {
-    launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, response => {
-      if (response.didCancel || response.errorCode) return;
+    launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, res => {
+      if (res.didCancel || res.errorCode) return;
 
-      const asset = response.assets?.[0];
+      const asset = res.assets?.[0];
       if (!asset?.uri) return;
 
       setPhoto({
@@ -90,50 +146,45 @@ const ProfileEditScreen = ({ goBack }: Props) => {
     });
   };
 
-  /* ===== SAVE ===== */
+  /* ================= SAVE ================= */
   const handleSave = async () => {
-    if (!superAdminId) {
-      Alert.alert('Error', 'User not found');
+    const net = await NetInfo.fetch();
+    if (!net.isConnected) {
+      Alert.alert(
+        'Offline',
+        'Internet connection required to update profile.',
+      );
+      return;
+    }
+
+    if (!userId || !role) {
+      Alert.alert('Error', 'User not found. Please login again.');
       return;
     }
 
     try {
-      await updateSuperAdminProfile(superAdminId, {
-        name,
-        email,
-        phone,
-      });
-
-      if (photo) {
-        await uploadSuperAdminImage(superAdminId, photo);
+      if (role === 'SUPER_ADMIN') {
+        await updateSuperAdminProfile(userId, { name, email, phone });
+        if (photo) await uploadSuperAdminImage(userId, photo);
+      } else {
+        await updateClubAdminProfile(userId, { name, email, phone });
+        if (photo) await uploadClubAdminImage(userId, photo);
       }
 
+      if (!isMounted.current) return;
 
-      await fetchProfile();
-
-      Alert.alert(
-        'Success',
-        'Profile updated successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-
-              setTimeout(goBack, 150);
-            },
-          },
-        ],
-      );
+      Alert.alert('Success', 'Profile updated successfully', [
+        { text: 'OK', onPress: goBack },
+      ]);
     } catch (err: any) {
       Alert.alert(
         'Error',
-        err?.response?.data?.message || 'Failed to update profile',
+        err?.response?.data?.message || 'Update failed',
       );
     }
   };
 
-
-  /* ===== UI ===== */
+  /* ================= UI ================= */
   return (
     <ScrollView
       contentContainerStyle={[
@@ -184,23 +235,15 @@ const ProfileEditScreen = ({ goBack }: Props) => {
         </Text>
 
         {/* AVATAR */}
-        <View style={styles.profileHeader}>
-          <TouchableOpacity onPress={handleChoosePhoto}>
-            <View>
-              {photoUri ? (
-                <Image source={{ uri: photoUri }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Ionicons name="person" size={36} color="#9ca3af" />
-                </View>
-              )}
-
-              <View style={styles.cameraIcon}>
-                <Ionicons name="camera" size={14} color="#020617" />
-              </View>
+        <TouchableOpacity onPress={handleChoosePhoto}>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Ionicons name="person" size={36} color="#9ca3af" />
             </View>
-          </TouchableOpacity>
-        </View>
+          )}
+        </TouchableOpacity>
 
         {/* FORM */}
         <Text style={[styles.label, { color: isDark ? '#E5E7EB' : '#020617' }]}>
@@ -274,30 +317,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  profileHeader: {
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-
   avatar: {
     width: 96,
     height: 96,
     borderRadius: 48,
+    marginBottom: 20,
   },
 
   avatarPlaceholder: {
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  cameraIcon: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#e5e7eb',
-    padding: 6,
-    borderRadius: 16,
   },
 
   label: {

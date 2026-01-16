@@ -15,6 +15,7 @@ import CustomButton from "../../components/CustomButton";
 import { registerSuperAdmin } from "../../api/auth";
 import { STORAGE_KEYS } from "../../utils/constants";
 import api from "../../api/axios";
+import { useAuth } from "../../components/context/AuthContext";
 
 const RegisterScreen = ({ navigation }: any) => {
   const [name, setName] = useState("");
@@ -25,6 +26,7 @@ const RegisterScreen = ({ navigation }: any) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const { setAuth } = useAuth();
 
   useEffect(() => {
     const check = async () => {
@@ -60,18 +62,12 @@ const RegisterScreen = ({ navigation }: any) => {
         password,
       });
 
-      await AsyncStorage.multiSet([
-        [STORAGE_KEYS.TOKEN, data.access_token],
-        [STORAGE_KEYS.ROLE, data.role],
-        [STORAGE_KEYS.USER_NAME, data.user?.name || ""],
-      ]);
+      await setAuth({
+        role: data.role,
+        token: data.access_token,
+      });
 
-      Alert.alert("Success", "Registration successful!", [
-        {
-          text: "OK",
-          onPress: () => navigation.replace("SuperAdminHome"),
-        },
-      ]);
+      navigation.replace("SuperAdminHome");
     } catch (error: any) {
       const msg =
         error?.response?.data?.message ||

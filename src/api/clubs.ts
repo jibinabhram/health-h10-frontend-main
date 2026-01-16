@@ -1,9 +1,10 @@
-// src/api/clubs.ts
 import api from './axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../utils/constants';
 
-// helper to attach token
+/* =====================================================
+   AUTH CONFIG
+   ===================================================== */
 const authConfig = async () => {
   const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
 
@@ -18,26 +19,59 @@ const authConfig = async () => {
   };
 };
 
+/* =====================================================
+   CREATE CLUB
+   ===================================================== */
 export const createClub = async (payload: any) => {
-  const res = await api.post('/clubs', payload);
-  return res.data?.data || res.data;
+  const config = await authConfig();
+  const res = await api.post('/clubs', payload, config);
+  return res.data?.data ?? res.data;
 };
 
+/* =====================================================
+   GET ALL CLUBS
+   ===================================================== */
 export const getAllClubs = async () => {
-  const res = await api.get('/clubs');
-  return res.data?.data || res.data;
+  const config = await authConfig();
+  const res = await api.get('/clubs', config);
+  return res.data?.data ?? res.data;
 };
 
-// UPDATE
+/* =====================================================
+   GET UNASSIGNED POD HOLDERS  ✅ FIX ADDED
+   ===================================================== */
+// ✅ CORRECT ENDPOINT
+export const getUnassignedPodHolders = async () => {
+  const config = await authConfig();
+  const res = await api.get('/pod-holders/unassigned', config);
+
+  // backend returns array directly
+  if (Array.isArray(res.data)) {
+    return res.data;
+  }
+
+  console.warn(
+    '⚠️ getUnassignedPodHolders: unexpected payload',
+    res.data,
+  );
+  return [];
+};
+
+
+/* =====================================================
+   UPDATE CLUB
+   ===================================================== */
 export const updateClub = async (clubId: string, payload: any) => {
   const config = await authConfig();
   const res = await api.patch(`/clubs/${clubId}`, payload, config);
-  return res.data?.data || res.data;
+  return res.data?.data ?? res.data;
 };
 
-// DELETE
+/* =====================================================
+   DELETE CLUB
+   ===================================================== */
 export const deleteClub = async (clubId: string) => {
   const config = await authConfig();
   const res = await api.delete(`/clubs/${clubId}`, config);
-  return res.data?.data || res.data;
+  return res.data?.data ?? res.data;
 };

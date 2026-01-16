@@ -174,7 +174,6 @@ const SuperAdminNavbar = ({
               <Text style={[styles.dropdownText, { color: textColor }]}>
                 Edit Profile
               </Text>
-
             </TouchableOpacity>
 
             <TouchableOpacity

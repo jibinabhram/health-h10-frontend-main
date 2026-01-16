@@ -1,56 +1,65 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import SidebarClubAdmin from '../../components/Sidebar/SidebarClubAdmin';
+import SidebarClubAdmin, {
+  ScreenType,
+} from '../../components/Sidebar/SidebarClubAdmin';
 import ClubAdminNavbar from '../../components/Navbar/ClubAdminNavbar';
+import ProfileEditScreen from '../SuperAdmin/ProfileEditScreen';
 
-import { useTheme } from '../../components/context/ThemeContext';
-
-import CreateCoach from './CreateCoach';
-import MyClubCoaches from './MyClubCoaches';
-
-type ScreenType = 'Home' | 'CreateCoach' | 'MyClubCoaches';
+const Screen = ({ title }: { title: string }) => (
+  <View style={styles.center}>
+    <Text style={{ fontSize: 20, fontWeight: '700' }}>{title}</Text>
+  </View>
+);
 
 const ClubAdminHome = () => {
-  const { theme } = useTheme();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [active, setActive] = useState<ScreenType>('Home');
+  const [activeScreen, setActiveScreen] =
+    useState<ScreenType | 'ProfileEdit'>('Dashboard');
 
-  const toggleSidebar = () => setSidebarOpen(prev => !prev);
+  const [collapsed, setCollapsed] = useState(false);
 
   const renderScreen = () => {
-    switch (active) {
-      case 'CreateCoach':
-        return <CreateCoach />;
-      case 'MyClubCoaches':
-        return <MyClubCoaches />;
-      default:
-        return (
-          <View style={styles.center}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: theme === 'dark' ? '#E5E7EB' : '#020617' }}>
-              Welcome Club Admin
-            </Text>
-          </View>
-        );
+    if (activeScreen === 'ProfileEdit') {
+      return <ProfileEditScreen goBack={() => setActiveScreen('Dashboard')} />;
     }
+
+    return <Screen title={activeScreen} />;
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme === 'dark' ? '#020617' : '#F1F5F9' }]}>
-      {sidebarOpen && <SidebarClubAdmin active={active} setActive={setActive} closeSidebar={toggleSidebar} />}
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.root}>
+        <View style={styles.navbarWrapper}>
+          <ClubAdminNavbar
+            title={activeScreen}
+            onNavigate={setActiveScreen}
+          />
+        </View>
 
-      <View style={styles.content}>
-        <ClubAdminNavbar title={active} toggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
-        {renderScreen()}
+        <View style={styles.body}>
+          <SidebarClubAdmin
+            active={activeScreen as ScreenType}
+            setActive={setActiveScreen}
+            collapsed={collapsed}
+            toggleSidebar={() => setCollapsed(v => !v)}
+          />
+
+          <View style={styles.content}>{renderScreen()}</View>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
+export default ClubAdminHome;
+
 const styles = StyleSheet.create({
-  container: { flex: 1, flexDirection: 'row' },
-  content: { flex: 1 },
+  safe: { flex: 1, backgroundColor: '#020617' },
+  root: { flex: 1, backgroundColor: '#F1F5F9' },
+  navbarWrapper: { height: 56, zIndex: 10 },
+  body: { flex: 1, flexDirection: 'row' },
+  content: { flex: 1, backgroundColor: '#F8FAFC' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });
-
-export default ClubAdminHome;

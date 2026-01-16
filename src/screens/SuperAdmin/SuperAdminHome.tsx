@@ -25,15 +25,10 @@ const SuperAdminHome = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
 
-  /* ===== RENDER SCREEN ===== */
   const renderScreen = () => {
     switch (activeScreen) {
       case 'Dashboard':
-        return (
-          <DashboardScreen
-            onNavigate={setActiveScreen}
-          />
-        );
+        return <DashboardScreen onNavigate={setActiveScreen} />;
 
       case 'ClubManagement':
         return (
@@ -79,11 +74,7 @@ const SuperAdminHome = () => {
         );
 
       default:
-        return (
-          <DashboardScreen
-            onNavigate={setActiveScreen}
-          />
-        );
+        return <DashboardScreen onNavigate={setActiveScreen} />;
     }
   };
 
@@ -128,22 +119,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#2F343B',
   },
-
   root: {
     flex: 1,
     backgroundColor: '#F1F5F9',
   },
-
   navbarWrapper: {
     height: 56,
     zIndex: 10,
   },
-
   body: {
     flex: 1,
     flexDirection: 'row',
   },
-
   content: {
     flex: 1,
     backgroundColor: '#F8FAFC',

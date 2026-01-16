@@ -189,7 +189,7 @@ const PodholderManagementScreen = () => {
         const res = await api.get('/clubs');
 
         const normalized: Club[] = (res.data?.data ?? []).map((c: any) => ({
-          club_id: c.id,
+          club_id: c.club_id,
           club_name: c.club_name,
         }));
 
@@ -960,13 +960,37 @@ const PodholderManagementScreen = () => {
         onClose={() => setOpenRegister(false)}
         onRegister={async payload => {
           try {
-            await createPodHolder(payload);
+            console.log('📤 REGISTER PODHOLDER PAYLOAD:', payload);
+
+            if (!payload.model?.trim()) {
+              alert('Podholder model is required');
+              return;
+            }
+
+            if (!payload.podIds || payload.podIds.length === 0) {
+              alert('Select at least one pod');
+              return;
+            }
+
+            await createPodHolder({
+              model: payload.model.trim(),
+              podIds: payload.podIds, // MUST be pod_id[]
+            });
+
             setOpenRegister(false);
             loadPodholders();
-          } catch (e) {
-            console.error('Register failed', e);
+          } catch (e: any) {
+            console.error('❌ Register failed', e);
+
+            const message =
+              e?.response?.data?.message ||
+              e?.message ||
+              'Registration failed';
+
+            alert(String(message));
           }
         }}
+
       />
 
     </View>

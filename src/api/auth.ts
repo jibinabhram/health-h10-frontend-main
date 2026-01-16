@@ -25,8 +25,16 @@ export const verifyLoginOtp = async (payload) => {
 // PROFILE
 export const fetchProfile = async () => {
   const res = await api.get('/auth/profile');
-  // backend returns { role, user }
-  return res.data.data.user;
+
+  // BACKEND FORMAT: { role, user }
+  if (!res.data?.data?.user) {
+    throw new Error('Invalid profile response');
+  }
+
+  return {
+    role: res.data.data.role,
+    ...res.data.data.user, // ← FLATTEN
+  };
 };
 
 
@@ -82,3 +90,26 @@ export const uploadSuperAdminImage = async (id: string, file: UploadImageFile) =
   return res.data;
 };
 
+export const updateClubAdminProfile = async (
+  id: string,
+  payload: { name?: string; email?: string; phone?: string },
+) => {
+  const res = await api.patch(`/club-admin/${id}`, payload);
+  return res.data;
+};
+
+export const uploadClubAdminImage = async (
+  id: string,
+  file: { uri: string; name: string; type: string },
+) => {
+  const formData = new FormData();
+  formData.append('file', file as any);
+
+  const res = await api.patch(
+    `/club-admin/${id}/image`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+
+  return res.data;
+};

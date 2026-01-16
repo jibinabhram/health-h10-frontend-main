@@ -17,14 +17,27 @@ import { generateClubPdf } from '../../utils/clubPdf';
 
 /* ================= TYPES ================= */
 interface Club {
-  id: string;
+  club_id: string;
   club_name: string;
-  sport: string;
-  admin_name: string;
+  address?: string;
+  sport?: string;
+
+  admin?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    temp_password?: string;
+  };
+
+  pod_holders?: any[];
+
   pods_count: number;
+  total_pods?: number;
   podholders_count: number;
+
   status: 'ACTIVE' | 'INACTIVE';
 }
+
 
 interface Props {
   openCreateClub: () => void;
@@ -77,12 +90,25 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
         : [];
 
       const normalized: Club[] = rawList.map((club: any) => ({
-        ...club,
+        club_id: club.club_id,
+        club_name: club.club_name,
+        address: club.address,
+        sport: club.sport,
+
+        admin: club.admin,
+        pod_holders: club.pod_holders,
+
+        pods_count: Number(club.pods_count ?? club.total_pods ?? 0),
+        total_pods: Number(club.total_pods ?? club.pods_count ?? 0),
+        podholders_count: Number(club.podholders_count ?? 0),
+
         status:
           club.status?.toUpperCase() === 'INACTIVE'
             ? 'INACTIVE'
             : 'ACTIVE',
       }));
+
+
 
       setClubs(normalized);
       setVisible(normalized.slice(0, PAGE_SIZE));
@@ -128,12 +154,13 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
     if (!statusModal) return;
 
     const nextStatus =
-      statusModal.status === 'ACTIVE' ? 'inactive' : 'active';
+      statusModal.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 
     try {
-      await api.patch(`/clubs/${statusModal.id}/status`, {
-        status: nextStatus,
-      });
+      await api.patch(
+        `/clubs/${statusModal.club_id}/status`,
+        { status: nextStatus },
+      );
 
       setStatusModal(null);
       await loadClubs();
@@ -143,6 +170,7 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
     }
   };
 
+
   /* ================= ACTIONS ================= */
   const deleteClub = (club: Club) => {
     Alert.alert('Delete Club', `Delete ${club.club_name}?`, [
@@ -151,7 +179,7 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await api.delete(`/clubs/${club.id}`);
+          await api.delete(`/clubs/${club.club_id}`);
           loadClubs();
         },
       },
@@ -159,9 +187,14 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
   };
 
   const downloadPdf = async (club: Club) => {
-    const res = await api.get(`/clubs/${club.id}`);
-    await generateClubPdf(res.data);
+    const res = await api.get(`/clubs/${club.club_id}`);
+
+    // ✅ unwrap backend response
+    const clubData = res.data?.data ?? res.data;
+
+    await generateClubPdf(clubData);
   };
+
 
   /* ================= TABLE HEADER ================= */
   const TableHeader = () => (
@@ -266,7 +299,7 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
       {/* LIST */}
       <FlatList
         data={visible}
-        keyExtractor={i => i.id}
+        keyExtractor={i => i.club_id}
         stickyHeaderIndices={[0]}
         ListHeaderComponent={TableHeader}
         onEndReached={loadMore}
@@ -285,7 +318,8 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
               {item.sport}
             </Text>
             <Text style={[styles.cell, { flex: COL.admin, color: text }]}>
-              {item.admin_name}
+              {item.admin?.name ?? '-'}
+
             </Text>
             <Text style={[styles.cell, { flex: COL.pods, color: text }]}>
               {item.pods_count}

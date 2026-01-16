@@ -15,10 +15,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import CustomButton from "../../components/CustomButton";
 import { loginUser, verifyLoginOtp } from "../../api/auth";
 import { STORAGE_KEYS } from "../../utils/constants";
+import { useAuth } from "../../components/context/AuthContext";
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { setAuth } = useAuth();
 
   const [otpStep, setOtpStep] = useState(false);
   const [otp, setOtp] = useState("");
@@ -63,28 +65,6 @@ export default function LoginScreen({ navigation }: any) {
     if (Array.isArray(msg)) return msg[0];
     if (msg?.message) return msg.message;
     return "Unexpected error";
-  };
-
-  const saveSession = async (data: any) => {
-    await AsyncStorage.multiSet([
-      [STORAGE_KEYS.TOKEN, data.access_token],
-      [STORAGE_KEYS.ROLE, data.role],
-      [STORAGE_KEYS.USER_NAME, data.user?.name || ""],
-    ]);
-
-    navigation.reset({
-      index: 0,
-      routes: [
-        {
-          name:
-            data.role === "SUPER_ADMIN"
-              ? "SuperAdminHome"
-              : data.role === "CLUB_ADMIN"
-              ? "ClubAdminHome"
-              : "CoachHome",
-        },
-      ],
-    });
   };
 
   const handleLogin = async () => {
@@ -136,7 +116,25 @@ export default function LoginScreen({ navigation }: any) {
       if (!res?.access_token)
         return safeAlert("Error", "Invalid login response");
 
-      await saveSession(res);
+      await setAuth({
+        role: res.role,
+        token: res.access_token,
+      });
+
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name:
+              res.role === "SUPER_ADMIN"
+                ? "SuperAdminHome"
+                : res.role === "CLUB_ADMIN"
+                ? "ClubAdminHome"
+                : "CoachHome",
+          },
+        ],
+      });
+
     } catch (err: any) {
       const msg = getErrorMessage(err).toLowerCase();
       if (msg.includes("invalid") || msg.includes("expired")) {
@@ -341,7 +339,7 @@ card: {
     color: "#fff",
     textAlign: "right",
     marginTop: 8,
-
+   
   },
   resendText: {
     textAlign: "center",

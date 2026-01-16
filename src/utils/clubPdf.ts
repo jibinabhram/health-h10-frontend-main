@@ -1,47 +1,165 @@
 import RNPrint from 'react-native-print';
-import Share from 'react-native-share';
 
 export const generateClubPdf = async (club: any) => {
   try {
     const html = `
       <html>
-        <body style="font-family: Arial; padding: 24px">
-          <h1>${club.club_name}</h1>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 32px;
+              color: #111827;
+            }
 
-          <h3>Club Details</h3>
-          <p><b>Address:</b> ${club.address}</p>
-          <p><b>Sport:</b> ${club.sport || 'N/A'}</p>
-          <p><b>Status:</b> ${club.status}</p>
+            .header {
+              text-align: center;
+              margin-bottom: 32px;
+            }
 
-          <hr />
+            .logo {
+              font-size: 26px;
+              font-weight: 800;
+              letter-spacing: 1px;
+            }
 
-          <h3>Pod Holders</h3>
+            .sub {
+              font-size: 12px;
+              color: #6B7280;
+              margin-top: 4px;
+            }
+
+            h2 {
+              margin-top: 28px;
+              font-size: 16px;
+              border-bottom: 2px solid #E5E7EB;
+              padding-bottom: 6px;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 12px;
+              font-size: 13px;
+            }
+
+            td {
+              padding: 10px;
+              border: 1px solid #E5E7EB;
+              vertical-align: top;
+            }
+
+            td.label {
+              width: 30%;
+              font-weight: 700;
+              background-color: #F9FAFB;
+            }
+
+            ul {
+              padding-left: 18px;
+              margin: 8px 0;
+            }
+
+            .footer {
+              margin-top: 48px;
+              text-align: center;
+              font-size: 11px;
+              color: #6B7280;
+            }
+          </style>
+        </head>
+
+        <body>
+          <!-- HEADER -->
+          <div class="header">
+            <div class="logo">CRADLE SPORTS</div>
+            <div class="sub">Club Information Report</div>
+          </div>
+
+          <!-- CLUB DETAILS -->
+          <h2>Club Details</h2>
+          <table>
+            <tr>
+              <td class="label">Club Name</td>
+              <td>${club.club_name || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td class="label">Address</td>
+              <td>${club.address || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td class="label">Sport</td>
+              <td>${club.sport || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td class="label">Status</td>
+              <td>${club.status || 'N/A'}</td>
+            </tr>
+          </table>
+
+          <!-- POD HOLDERS -->
+          <h2>Pod Holders</h2>
           ${
             club.pod_holders?.length
-              ? `<ul>
-                  ${club.pod_holders
-                    .map((p: any) => `<li>${p.serial_number}</li>`)
-                    .join('')}
-                </ul>`
-              : '<p>No pod holders assigned</p>'
+              ? `
+                <table>
+                  <tr>
+                    <td class="label">Assigned Pods</td>
+                    <td>
+                      <ul>
+                        ${club.pod_holders
+                          .map(
+                            (p: any) =>
+                              `<li>${p.serial_number}</li>`,
+                          )
+                          .join('')}
+                      </ul>
+                    </td>
+                  </tr>
+                </table>
+              `
+              : `
+                <table>
+                  <tr>
+                    <td>No pod holders assigned</td>
+                  </tr>
+                </table>
+              `
           }
 
-          <hr />
-
-          <h3>Club Admin</h3>
+          <!-- CLUB ADMIN -->
+          <h2>Club Admin</h2>
           ${
             club.admin
               ? `
-                <p><b>Name:</b> ${club.admin.name}</p>
-                <p><b>Email:</b> ${club.admin.email}</p>
-                <p><b>Phone:</b> ${club.admin.phone || 'N/A'}</p>
-                <p><b>Temporary Password:</b> ${club.admin.temp_password || 'N/A'}</p>
+                <table>
+                  <tr>
+                    <td class="label">Name</td>
+                    <td>${club.admin.name}</td>
+                  </tr>
+                  <tr>
+                    <td class="label">Email</td>
+                    <td>${club.admin.email}</td>
+                  </tr>
+                  <tr>
+                    <td class="label">Temporary Password</td>
+                    <td>${club.admin.temp_password || 'N/A'}</td>
+                  </tr>
+                </table>
               `
-              : '<p>No admin assigned</p>'
+              : `
+                <table>
+                  <tr>
+                    <td>No admin assigned</td>
+                  </tr>
+                </table>
+              `
           }
 
-          <hr />
-           <!--<p style="font-size:12px">add any notes if you want</p>-->
+          <!-- FOOTER -->
+          <div class="footer">
+            PDF generated by <b>Cradle Sports</b>
+          </div>
         </body>
       </html>
     `;
