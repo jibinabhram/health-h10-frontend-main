@@ -16,9 +16,6 @@ import { calculateMetricsFromRaw } from "../../services/calculateMetrics.service
 import { exportTrimmedCsv } from "../../services/exportCsv.service";
 import { debugDatabase } from "../../services/debug.service";
 import { safeAlert } from "../../services/safeAlert.service";
-// import { useRoute } from "@react-navigation/native";
-import { RouteProp, useRoute } from "@react-navigation/native";
-import { RootStackParamList } from "../../navigation/AppNavigator";
 
 /* ================= TIME HELPERS ================= */
 
@@ -37,10 +34,22 @@ function timeToMs(timeStr: string): number {
     throw new Error("Invalid time");
   }
 
-  return ((h * 3600) + (m * 60) + s) * 1000;
+  return (h * 3600 + m * 60 + s) * 1000;
 }
 
-export default function ImportFromESP32() {
+/* =====================================================
+   🔧 FIXED: switched from useRoute() to props
+===================================================== */
+
+export default function ImportFromESP32({
+  file,
+  eventDraft,
+  goBack,
+}: {
+  file?: string;
+  eventDraft?: any;
+  goBack: () => void;
+}) {
   const mountedRef = useRef(true);
 
   const [files, setFiles] = useState<string[]>([]);
@@ -53,29 +62,27 @@ export default function ImportFromESP32() {
 
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const route =
-    useRoute<RouteProp<RootStackParamList, "ImportFromESP32">>();
-  const eventDraft = route.params?.eventDraft ?? null;
-  const comingFromEvent = !!route.params?.file;
+
+  /* =====================================================
+     🔧 FIXED: derived from props instead of route.params
+  ===================================================== */
+
+  const comingFromEvent = !!file;
 
   useEffect(() => {
-    if (route.params?.file) {
-      setSelected(route.params.file);
-      setDropdownOpen(false); // 👈 IMPORTANT
+    if (file) {
+      setSelected(file);
+      setDropdownOpen(false); // auto hide dropdown
+    } else {
+      loadFiles(); // load file list if NOT coming from event
     }
-  }, [route.params?.file]);
+  }, [file]);
 
   useEffect(() => {
     return () => {
       mountedRef.current = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (!route.params?.file) {
-      loadFiles(); // only load list if NOT coming from calendar
-    }
-  }, [route.params?.file]);
 
   const loadFiles = async () => {
     try {
@@ -84,7 +91,7 @@ export default function ImportFromESP32() {
 
       if (mountedRef.current) {
         setFiles(list);
-        setDropdownOpen(true); // 👈 auto show list
+        setDropdownOpen(true);
       }
     } catch {
       Alert.alert("ESP32 Not Reachable", "Connect phone to ESP32 Wi-Fi");
@@ -124,7 +131,6 @@ export default function ImportFromESP32() {
       const sessionId = selected.replace(".csv", "");
       const csvText = await downloadCsv(selected);
 
-      // ✅ PASS RELATIVE OFFSETS
       await importCsvToSQLite(
         csvText,
         sessionId,
@@ -132,12 +138,12 @@ export default function ImportFromESP32() {
         trimEndMs,
         eventDraft || undefined
       );
+
       await calculateMetricsFromRaw(sessionId);
       debugDatabase(sessionId);
 
       setImportedSession(sessionId);
       Alert.alert("Success", "CSV imported & calculated successfully");
-
     } catch (err) {
       console.error("❌ IMPORT ERROR:", err);
       Alert.alert(
@@ -167,35 +173,41 @@ export default function ImportFromESP32() {
   return (
     <View style={styles.container}>
       <View style={styles.box}>
-      {eventDraft && (
-        <View style={styles.eventBox}>
-          <Text style={styles.eventTitle}>Event Details</Text>
 
-          <Text style={styles.eventField}>
-            Event Name: {eventDraft.eventName || "—"}
-          </Text>
+        {/* 🔧 FIXED: back navigation via props */}
+        <TouchableOpacity onPress={goBack} style={{ marginBottom: 12 }}>
+          <Text style={{ color: "#0284c7", fontWeight: "700" }}>← Back</Text>
+        </TouchableOpacity>
 
-          <Text style={styles.eventField}>
-            Event Date: {eventDraft.eventDate || "—"}
-          </Text>
+        {eventDraft && (
+          <View style={styles.eventBox}>
+            <Text style={styles.eventTitle}>Event Details</Text>
 
-          <Text style={styles.eventField}>
-            Event Type: {eventDraft.eventType || "—"}
-          </Text>
+            <Text style={styles.eventField}>
+              Event Name: {eventDraft.eventName || "—"}
+            </Text>
 
-          <Text style={styles.eventField}>
-            Location: {eventDraft.location || "—"}
-          </Text>
+            <Text style={styles.eventField}>
+              Event Date: {eventDraft.eventDate || "—"}
+            </Text>
 
-          <Text style={styles.eventField}>
-            Field: {eventDraft.field || "—"}
-          </Text>
+            <Text style={styles.eventField}>
+              Event Type: {eventDraft.eventType || "—"}
+            </Text>
 
-          <Text style={styles.eventField}>
-            Notes: {eventDraft.notes || "—"}
-          </Text>
-        </View>
-      )}
+            <Text style={styles.eventField}>
+              Location: {eventDraft.location || "—"}
+            </Text>
+
+            <Text style={styles.eventField}>
+              Field: {eventDraft.field || "—"}
+            </Text>
+
+            <Text style={styles.eventField}>
+              Notes: {eventDraft.notes || "—"}
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.label}>Select Match</Text>
 
@@ -206,7 +218,7 @@ export default function ImportFromESP32() {
             ) : (
               <FlatList
                 data={files}
-                keyExtractor={i => i}
+                keyExtractor={(i) => i}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[
@@ -225,9 +237,7 @@ export default function ImportFromESP32() {
 
         {selected && (
           <>
-            <Text style={styles.trimTitle}>
-              Trim by Time (HH:MM:SS)
-            </Text>
+            <Text style={styles.trimTitle}>Trim by Time (HH:MM:SS)</Text>
 
             <View style={styles.trimRow}>
               <TextInput
@@ -252,9 +262,7 @@ export default function ImportFromESP32() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.importText}>
-                  IMPORT & CALCULATE
-                </Text>
+                <Text style={styles.importText}>IMPORT & CALCULATE</Text>
               )}
             </TouchableOpacity>
           </>
@@ -262,13 +270,8 @@ export default function ImportFromESP32() {
       </View>
 
       {importedSession && (
-        <TouchableOpacity
-          style={styles.downloadBtn}
-          onPress={downloadTrimmed}
-        >
-          <Text style={styles.downloadText}>
-            DOWNLOAD TRIMMED CSV
-          </Text>
+        <TouchableOpacity style={styles.downloadBtn} onPress={downloadTrimmed}>
+          <Text style={styles.downloadText}>DOWNLOAD TRIMMED CSV</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -281,15 +284,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#f5f7fa" },
   box: { backgroundColor: "#fff", borderRadius: 12, padding: 14 },
   label: { fontWeight: "700", marginBottom: 6 },
-
-  dropdown: {
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 8,
-    padding: 14,
-  },
-
-  dropdownText: { fontSize: 14 },
 
   dropdownList: {
     maxHeight: 220,
@@ -334,6 +328,7 @@ const styles = StyleSheet.create({
   },
 
   downloadText: { color: "#fff", fontWeight: "700" },
+
   eventBox: {
     backgroundColor: "#f8fafc",
     borderRadius: 10,

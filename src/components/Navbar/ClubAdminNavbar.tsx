@@ -8,7 +8,6 @@ import {
   Image,
   StatusBar,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import ThemeToggle from '../context/ThemeToggle';
@@ -21,11 +20,11 @@ const NAVBAR_HEIGHT = 56;
 
 interface Props {
   title: string;
+  onNavigate: (screen: 'ProfileEdit' | 'Logout') => void;
 }
 
-const ClubAdminNavbar: React.FC<Props> = ({ title }) => {
+const ClubAdminNavbar: React.FC<Props> = ({ title, onNavigate, }) => {
   const { theme } = useTheme();
-  const navigation = useNavigation<any>();
   const isDark = theme === 'dark';
 
   const [profileOpen, setProfileOpen] = useState(false);
@@ -51,19 +50,9 @@ const ClubAdminNavbar: React.FC<Props> = ({ title }) => {
 
   /* ===== ACTIONS ===== */
 
-  const handleProfileEdit = () => {
+  const handleLogout = () => {
     setProfileOpen(false);
-    navigation.navigate('ProfileEdit');
-  };
-
-  const handleLogout = async () => {
-    setProfileOpen(false);
-    await logout();
-
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Login' }],
-    });
+    onNavigate('Logout');
   };
 
   /* ===== PROFILE IMAGE HANDLING ===== */
@@ -145,9 +134,9 @@ const ClubAdminNavbar: React.FC<Props> = ({ title }) => {
 
             <TouchableOpacity
               style={styles.dropdownItem}
-              onPress={()=>{
-                  setProfileOpen(false);
-                  onNavigate('profileEdit');
+              onPress={() => {
+                setProfileOpen(false);
+                onNavigate('ProfileEdit');
               }}
             >
               <Ionicons

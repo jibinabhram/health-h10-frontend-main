@@ -14,6 +14,7 @@ import ResetPassword from '../screens/Auth/ResetPassword';
 import SuperAdminHome from '../screens/SuperAdmin/SuperAdminHome';
 import ClubAdminHome from '../screens/ClubAdmin/ClubAdminHome';
 import CoachHome from '../screens/Coach/CoachHome';
+import AuthLoadingScreen from '../screens/Auth/AuthLoadingScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,7 +30,6 @@ const AppNavigator = () => {
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
         <Stack.Screen name="ResetPassword" component={ResetPassword} />
-        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
 
         {/* SUPER ADMIN */}
         <Stack.Screen
