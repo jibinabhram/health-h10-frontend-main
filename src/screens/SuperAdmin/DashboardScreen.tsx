@@ -7,6 +7,8 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import api from '../../api/axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '../../components/context/ThemeContext';
 
 type Props = {
@@ -37,6 +39,10 @@ const DashboardScreen: React.FC<Props> = ({ onNavigate }) => {
     cyan: '#06B6D4',
   };
 
+
+  const DASHBOARD_CACHE_KEY = 'dashboard_stats_cache';
+
+
   const [stats, setStats] = useState<DashboardStats>({
     totalClubs: 0,
     totalPodholders: 0,
@@ -48,20 +54,57 @@ const DashboardScreen: React.FC<Props> = ({ onNavigate }) => {
 
   const [loading, setLoading] = useState(true);
 
+
+
+  const loadCachedStats = async () => {
+    try {
+      const cached = await AsyncStorage.getItem(DASHBOARD_CACHE_KEY);
+      if (!cached) return;
+
+      const parsed: DashboardStats = JSON.parse(cached);
+      setStats(parsed);
+      setLoading(false); // show cached data immediately
+    } catch {
+      await AsyncStorage.removeItem(DASHBOARD_CACHE_KEY);
+    }
+  };
+
+
   useEffect(() => {
-    loadStats();
+    // 1️⃣ show cached stats instantly
+    loadCachedStats();
+
+    // 2️⃣ fetch fresh data only if online
+    NetInfo.fetch().then(state => {
+      if (state.isConnected) {
+        loadStats();
+      }
+    });
   }, []);
+
 
   const loadStats = async () => {
     try {
       const res = await api.get('/super-admin/dashboard/stats');
-      setStats(res.data.data);
+      const data = res.data?.data;
+
+      if (!data) return;
+
+      setStats(data);
+
+      // ✅ sync cache
+      await AsyncStorage.setItem(
+        DASHBOARD_CACHE_KEY,
+        JSON.stringify(data),
+      );
     } catch {
       console.warn('Failed to load dashboard stats');
     } finally {
       setLoading(false);
     }
   };
+
+
 
   return (
     <View style={[styles.page, { backgroundColor: colors.bg }]}>

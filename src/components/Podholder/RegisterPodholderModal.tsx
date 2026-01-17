@@ -25,10 +25,10 @@ type Props = {
   pods?: Pod[];
   onClose: () => void;
   onRegister: (payload: {
-    model: string;
     podIds: string[];
   }) => void;
 };
+
 
 const MAX_PODS = 24;
 const NUM_COLUMNS = 6;
@@ -41,7 +41,7 @@ const RegisterPodholderModal = ({
   onClose,
   onRegister,
 }: Props) => {
-  const [model, setModel] = useState('');
+
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | PodStatus>('ALL');
@@ -61,12 +61,7 @@ const RegisterPodholderModal = ({
     });
   };
 
-  const handleSubmit = () => {
-    if (!model.trim()) {
-      setError('Please enter pod holder model');
-      return;
-    }
-
+  const handleSubmit = async () => {
     if (selected.length < MAX_PODS) {
       setError('Please select at least 24 pods');
       return;
@@ -74,14 +69,22 @@ const RegisterPodholderModal = ({
 
     setError(null);
 
-    onRegister({
-      model: model.trim(),
-      podIds: selected,
-    });
+    try {
+      await onRegister({
+        podIds: selected,
+      });
 
-    setModel('');
-    setSelected([]);
+      setSelected([]);
+    } catch (err: any) {
+      if (err?.isOffline) {
+        setError('No internet connection. Please try again.');
+        return;
+      }
+
+      setError('Failed to register podholder');
+    }
   };
+
 
 
   return (
@@ -98,13 +101,7 @@ const RegisterPodholderModal = ({
 
           <Text style={styles.serialHint}>Serial Number: Auto generated</Text>
 
-          {/* MODEL */}
-          <TextInput
-            placeholder="Enter podholder model (e.g. H10 Pro)"
-            value={model}
-            onChangeText={setModel}
-            style={styles.input}
-          />
+
 
           {/* FILTER */}
           <View style={styles.filterRow}>
@@ -181,12 +178,13 @@ const RegisterPodholderModal = ({
           {/* BUTTON */}
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={!model.trim() || selected.length < MAX_PODS}
+            disabled={selected.length < MAX_PODS}
             style={[
               styles.btn,
-              (!model.trim() || selected.length < MAX_PODS) && { opacity: 0.5 },
+              selected.length < MAX_PODS && { opacity: 0.5 },
             ]}
           >
+
 
             <Text style={styles.btnText}>Register Podholder</Text>
           </TouchableOpacity>
@@ -231,13 +229,6 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
 
-  input: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-  },
 
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
 

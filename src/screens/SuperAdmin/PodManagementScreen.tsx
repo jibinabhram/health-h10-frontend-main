@@ -19,12 +19,15 @@ import {
   UIManager,
   findNodeHandle,
   Dimensions ,
+  Alert,
 } from 'react-native';
 
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import RegisterPodModal from '../../components/RegisterPodModal';
 import { downloadPods } from '../../utils/podExport';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { fetchPods } from '../../api/pods';
 import { useTheme } from '../../components/context/ThemeContext';
 import { updatePodStatus } from '../../api/pods';
@@ -46,7 +49,8 @@ type Pod = {
 /* ================= PAGINATION (ADDED) ================= */
 const ITEMS_PER_PAGE = 9;
 
-
+/* ================= CACHE KEY ================= */
+const PODS_CACHE_KEY = 'pods_management_cache';
 /* ================= COLORS ================= */
 
 const COLORS = {
@@ -155,8 +159,15 @@ const PodManagementScreen = () => {
   const isTablet = width >= 768;
 
   useEffect(() => {
-    loadPods();
+    loadCachedPods(); // show cached data instantly
+
+    NetInfo.fetch().then(state => {
+      if (state.isConnected) {
+        loadPods();        // online → API + cache
+      }
+    });
   }, []);
+
 
   const loadPods = async () => {
     try {
@@ -172,17 +183,40 @@ const PodManagementScreen = () => {
 
       setPods(mapped);
 
-      const uniqueBatches = Array.from(
-        new Set(mapped.map(p => p.batchId)),
-      ).sort((a, b) => b.localeCompare(a));
+      await AsyncStorage.setItem(
+        PODS_CACHE_KEY,
+        JSON.stringify(mapped),
+      );
 
-      setBatches(['ALL', ...uniqueBatches]);
+    } catch (err: any) {
+      // ✅ OFFLINE HANDLING (THIS IS THE FIX)
+      if (err?.isOffline) {
+        Alert.alert(
+          'Offline',
+          'No internet connection. Showing saved data.',
+        );
+        return;
+      }
 
-    } catch (err) {
       console.error('❌ loadPods failed:', err);
-      alert('Failed to load pods from server');
+      Alert.alert('Error', 'Failed to load pods from server');
     }
   };
+
+  const loadCachedPods = async () => {
+    const cached = await AsyncStorage.getItem(PODS_CACHE_KEY);
+    if (!cached) return;
+
+    const mapped: Pod[] = JSON.parse(cached);
+    setPods(mapped);
+
+    const uniqueBatches = Array.from(
+      new Set(mapped.map(p => p.batchId)),
+    ).sort((a, b) => b.localeCompare(a));
+
+    setBatches(['ALL', ...uniqueBatches]);
+  };
+
 
   /* ================= FILTER ================= */
 
@@ -220,6 +254,8 @@ const PodManagementScreen = () => {
    /* ================= PAGINATED DATA (ADDED) ================= */
 
     const totalPages = Math.ceil(filteredPods.length / ITEMS_PER_PAGE);
+
+
 
     const paginatedPods = useMemo(() => {
       const start = (page - 1) * ITEMS_PER_PAGE;
@@ -587,30 +623,42 @@ const PodManagementScreen = () => {
 
                                const { podId, newStatus, oldStatus } = pendingChange;
 
-                               // Optimistic UI
-                               setPods(prev =>
-                                 prev.map(p =>
-                                   p.id === podId ? { ...p, status: newStatus } : p,
-                                 ),
-                               );
-
                                setConfirmOpen(false);
                                setEditingPodId(null);
                                setPendingChange(null);
 
                                try {
+                                 // ✅ Update state + cache together
+                                 setPods(prev => {
+                                   const updated = prev.map(p =>
+                                     p.id === podId ? { ...p, status: newStatus } : p
+                                   );
+
+                                   // ✅ Save to AsyncStorage
+                                   AsyncStorage.setItem(
+                                     PODS_CACHE_KEY,
+                                     JSON.stringify(updated),
+                                   );
+
+                                   return updated;
+                                 });
+
+                                 // ✅ Call API
                                  await updatePodStatus(podId, newStatus);
+
                                } catch {
-                                 // rollback
+                                 // ❌ Rollback if API fails
                                  setPods(prev =>
                                    prev.map(p =>
-                                     p.id === podId ? { ...p, status: oldStatus } : p,
+                                     p.id === podId ? { ...p, status: oldStatus } : p
                                    ),
                                  );
+
                                  alert('Status update failed');
                                }
                              }}
                            >
+
                              <Text style={{ color: '#2563EB', fontWeight: '700' }}>
                                Confirm
                              </Text>
@@ -654,7 +702,7 @@ const PodManagementScreen = () => {
                 },
               ]}
             >
-              Device
+              Device ID
             </Text>
 
 

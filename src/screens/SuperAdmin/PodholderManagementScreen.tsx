@@ -10,10 +10,13 @@ import {
   Modal,
   useWindowDimensions,
   Pressable,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { exportPodholdersCsv } from '../../utils/exportPodholdersCsv';
 import api from '../../api/axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { getAvailablePods, createPodHolder } from '../../api/pods';
 import RegisterPodholderModal from '../../components/Podholder/RegisterPodholderModal';
 import PodholderDetailModal from './PodholderDetailModal';
@@ -32,7 +35,7 @@ type PodStatus =
 type PodHolder = {
   pod_holder_id: string;
   serial_number: string | null;
-  model: string;
+  device_id: string | null;
   club?: {
     club_id: string;
     club_name: string;
@@ -40,6 +43,7 @@ type PodHolder = {
 
   pods?: { lifecycle_status: PodStatus }[];
 };
+
 
 type Pod = {
   pod_id: string;
@@ -127,6 +131,7 @@ const COL = {
 };
 
 
+const PODHOLDERS_CACHE_KEY = 'podholders_management_cache';
 
 
 
@@ -134,9 +139,8 @@ const COL = {
 
 const PodholderManagementScreen = () => {
   const { theme } = useTheme();
-
-    const { width } = useWindowDimensions();
-      const isCompact = width < 900;
+  const { width } = useWindowDimensions();
+  const isCompact = width < 900;
   const colors =
     theme === 'dark'
       ? {
@@ -170,21 +174,36 @@ const PodholderManagementScreen = () => {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [confirming, setConfirming] = useState(false);
 
+
+
     /* ---------- LOAD DATA ---------- */
 
-    const loadPodholders = async () => {
+    const loadCachedPodholders = async () => {
       try {
-        setLoading(true);
-        const res = await api.get('/pod-holders');
-        setPodholders(res.data?.data ?? []);
-      } catch (err) {
-        console.error('Failed to load podholders', err);
-      } finally {
-        setLoading(false);
+        const cached = await AsyncStorage.getItem(PODHOLDERS_CACHE_KEY);
+        if (!cached) return;
+
+        const parsed: PodHolder[] = JSON.parse(cached);
+        setPodholders(parsed);
+      } catch (e) {
+        console.warn('Invalid podholder cache, clearing');
+        await AsyncStorage.removeItem(PODHOLDERS_CACHE_KEY);
       }
     };
 
+
     const loadClubs = async () => {
+      // 🌐 CHECK INTERNET FIRST
+      const net = await NetInfo.fetch();
+
+      if (!net.isConnected) {
+        Alert.alert(
+          'No Internet Connection',
+          'Internet is required to load clubs.',
+        );
+        return;
+      }
+
       try {
         const res = await api.get('/clubs');
 
@@ -196,6 +215,12 @@ const PodholderManagementScreen = () => {
         setClubs(normalized);
       } catch (err) {
         console.error('Failed to load clubs', err);
+
+        Alert.alert(
+          'Failed to Load Clubs',
+          'Something went wrong. Please try again.',
+        );
+
         setClubs([]);
       }
     };
@@ -223,11 +248,40 @@ const PodholderManagementScreen = () => {
 
 
 
+    const loadPodholders = async () => {
+      try {
+        setLoading(true);
+
+        const res = await api.get('/pod-holders');
+        const data = res.data?.data ?? [];
+
+        setPodholders(data);
+
+        // ✅ keep cache in sync
+        await AsyncStorage.setItem(
+          PODHOLDERS_CACHE_KEY,
+          JSON.stringify(data),
+        );
+      } catch (err) {
+        console.error('Failed to load podholders', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
 
     useEffect(() => {
-      loadPodholders();
+      // 1️⃣ Load cached data instantly
+      loadCachedPodholders();
+
+      // 2️⃣ Fetch fresh data only if online
+      NetInfo.fetch().then(state => {
+        if (state.isConnected) {
+          loadPodholders();
+        }
+      });
     }, []);
+
 
 
 
@@ -238,35 +292,51 @@ const PodholderManagementScreen = () => {
   }, [editType]);
 
 
+
   const confirmChange = async () => {
     if (confirming) return;
     if (!editHolder || !confirmValue) return;
+
+    // 🔌 CHECK INTERNET FIRST
+    const net = await NetInfo.fetch();
+
+    if (!net.isConnected) {
+      Alert.alert(
+        'No Internet Connection',
+        'Internet is required to update podholder details.',
+      );
+      return;
+    }
 
     try {
       setConfirming(true);
 
       if (editType === 'CLUB') {
         await api.patch(
-          `/pod-holders/${editHolder.pod_holder_id}/assign/${confirmValue}`
+          `/pod-holders/${editHolder.pod_holder_id}/assign/${confirmValue}`,
         );
       }
 
       if (editType === 'STATUS') {
         await api.patch(
           `/pod-holders/${editHolder.pod_holder_id}/status`,
-          { status: confirmValue }
+          { status: confirmValue },
         );
       }
 
-      setPodholders(prev =>
-        prev.map(h =>
+      // ✅ UPDATE UI + CACHE ONLY AFTER SUCCESS
+      setPodholders(prev => {
+        const updated = prev.map(h =>
           h.pod_holder_id === editHolder.pod_holder_id
             ? editType === 'CLUB'
               ? {
                   ...h,
                   club: {
                     club_id: confirmValue,
-                    club_name: clubs.find(c => c.club_id === confirmValue)!.club_name,
+                    club_name:
+                      clubs.find(c => c.club_id === confirmValue)?.club_name ??
+                      h.club?.club_name ??
+                      '',
                   },
                 }
               : {
@@ -274,9 +344,21 @@ const PodholderManagementScreen = () => {
                   pods: [{ lifecycle_status: confirmValue as PodStatus }],
                 }
             : h
-        )
-      );
+        );
 
+        AsyncStorage.setItem(
+          PODHOLDERS_CACHE_KEY,
+          JSON.stringify(updated),
+        );
+
+        return updated;
+      });
+
+    } catch (err) {
+      Alert.alert(
+        'Update Failed',
+        'Unable to update. Please try again.',
+      );
     } finally {
       setConfirming(false);
       setEditHolder(null);
@@ -284,6 +366,7 @@ const PodholderManagementScreen = () => {
       setConfirmValue(null);
     }
   };
+
 
 
 
@@ -306,7 +389,7 @@ const PodholderManagementScreen = () => {
 
   const filtered = podholders.filter(h => {
     const matchesSearch =
-      `${h.serial_number ?? ''} ${h.model}`
+      `${h.serial_number ?? ''} ${h.device_id ?? ''}`
         .toLowerCase()
         .includes(search.toLowerCase());
 
@@ -432,7 +515,7 @@ const PodholderManagementScreen = () => {
               },
             ]}
           >
-            Model
+            Device ID
           </Text>
 
           <Text
@@ -520,9 +603,12 @@ const PodholderManagementScreen = () => {
 
                   {/* Body */}
                   <Text style={[styles.cardText, { color: colors.muted }]}>
-                    Model:{' '}
-                    <Text style={{ color: colors.text }}>{item.model}</Text>
+                    Device ID:{' '}
+                    <Text style={{ color: colors.text }}>
+                      {item.device_id ?? '-'}
+                    </Text>
                   </Text>
+
 
                   <Text style={[styles.cardText, { color: colors.muted }]}>
                     Assigned To:{' '}
@@ -609,7 +695,7 @@ const PodholderManagementScreen = () => {
                   <Text
                     style={[styles.td, { flex: COL.MODEL, color: colors.text }]}
                   >
-                    {item.model}
+                    {item.device_id ?? '-'}
                   </Text>
 
                   <View style={{ flex: COL.STATUS }}>
@@ -962,23 +1048,20 @@ const PodholderManagementScreen = () => {
           try {
             console.log('📤 REGISTER PODHOLDER PAYLOAD:', payload);
 
-            if (!payload.model?.trim()) {
-              alert('Podholder model is required');
-              return;
-            }
-
             if (!payload.podIds || payload.podIds.length === 0) {
               alert('Select at least one pod');
               return;
             }
 
             await createPodHolder({
-              model: payload.model.trim(),
-              podIds: payload.podIds, // MUST be pod_id[]
+              podIds: payload.podIds,
             });
 
             setOpenRegister(false);
+
+            // reload API + cache
             loadPodholders();
+
           } catch (e: any) {
             console.error('❌ Register failed', e);
 
@@ -990,6 +1073,7 @@ const PodholderManagementScreen = () => {
             alert(String(message));
           }
         }}
+
 
       />
 

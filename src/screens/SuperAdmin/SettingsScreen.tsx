@@ -13,7 +13,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
+import api from '../../api/axios';
 import { useTheme } from '../../components/context/ThemeContext';
 import { logout } from '../../utils/logout';
 
@@ -44,22 +44,36 @@ const SettingsScreen = ({ goBack }: Props) => {
   const text = isDark ? '#E5E7EB' : '#020617';
   const sub = '#64748b';
 
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
       Alert.alert('Error', 'All fields are required');
       return;
     }
+
     if (newPassword !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
-    Alert.alert('Success', 'Password updated successfully');
-    setOpenPassword(false);
-    setOldPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      await api.post('/auth/change-password', {
+        oldPassword,
+        newPassword,
+      });
+
+      Alert.alert('Success', 'Password updated successfully');
+      setOpenPassword(false);
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error?.response?.data?.message || 'Failed to update password',
+      );
+    }
   };
+
 
   const handleLogout = () => {
     Alert.alert(

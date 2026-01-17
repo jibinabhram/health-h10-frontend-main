@@ -77,32 +77,20 @@ export const createPodHolder = async (payload: {
 export async function createPodsBatch(
   count: number,
   model?: string,
-): Promise<{ batch_id: string; created: number } | null> {
+): Promise<{ batch_id: string; created: number }> {
   try {
-    const res = await fetch(`${API_BASE_URL}/pods/batch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ count, model }),
+    const res = await api.post('/pods/batch', {
+      count,
+      model,
     });
 
-    if (!res.ok) {
-      console.error(' createPodsBatch HTTP error:', res.status);
-      return null;
-    }
-
-    const json = await res.json();
-
-    if (!json?.data) {
-      console.error(' createPodsBatch: missing data', json);
-      return null;
-    }
-
-    return json.data;
+    return res.data?.data;
   } catch (err) {
-    console.error(' createPodsBatch failed:', err);
-    return null;
+    // axios.ts already converts offline → { isOffline: true }
+    throw err;
   }
 }
+
 
 /* =====================================================
    UPDATE POD STATUS

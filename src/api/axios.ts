@@ -2,6 +2,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL, STORAGE_KEYS } from '../utils/constants';
+import NetInfo from '@react-native-community/netinfo';
+
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -24,20 +26,34 @@ api.interceptors.request.use(
   error => Promise.reject(error),
 );
 
-// Auto-logout on 401
 api.interceptors.response.use(
-  res => res,
-  async err => {
-    if (err?.response?.status === 401) {
+  response => response,
+  async error => {
+    // 🌐 OFFLINE HANDLING
+    if (!error.response) {
+      const netState = await NetInfo.fetch();
+
+      if (!netState.isConnected) {
+        console.log('⚠️ Offline – request blocked');
+
+        return Promise.reject({
+          isOffline: true,
+          message: 'No internet connection',
+        });
+      }
+    }
+
+    // 🔐 AUTH HANDLING
+    if (error.response?.status === 401) {
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.TOKEN,
         STORAGE_KEYS.ROLE,
         STORAGE_KEYS.USER_NAME,
       ]);
-      console.log(' Token expired – user logged out');
+      console.log('🔐 Token expired – user logged out');
     }
-    return Promise.reject(err);
+
+    return Promise.reject(error);
   },
 );
-
 export default api;

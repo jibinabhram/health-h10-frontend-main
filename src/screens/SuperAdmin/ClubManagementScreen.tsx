@@ -12,6 +12,9 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import api from '../../api/axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+
 import { useTheme } from '../../components/context/ThemeContext';
 import { generateClubPdf } from '../../utils/clubPdf';
 
@@ -78,6 +81,10 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
   const muted = '#64748B';
   const border = isDark ? '#1E293B' : '#E2E8F0';
 
+
+
+  const CLUBS_CACHE_KEY = 'clubs_management_cache';
+
   /* ================= LOAD CLUBS ================= */
   const loadClubs = async () => {
     try {
@@ -113,15 +120,46 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
       setClubs(normalized);
       setVisible(normalized.slice(0, PAGE_SIZE));
       setPage(1);
+
+      // ✅ keep cache in sync
+      await AsyncStorage.setItem(
+        CLUBS_CACHE_KEY,
+        JSON.stringify(normalized),
+      );
+
+      setPage(1);
     } catch (err) {
       console.error('LOAD CLUBS FAILED', err);
       Alert.alert('Error', 'Failed to load clubs');
     }
   };
 
+  const loadCachedClubs = async () => {
+    try {
+      const cached = await AsyncStorage.getItem(CLUBS_CACHE_KEY);
+      if (!cached) return;
+
+      const parsed: Club[] = JSON.parse(cached);
+      setClubs(parsed);
+      setVisible(parsed.slice(0, PAGE_SIZE));
+      setPage(1);
+    } catch {
+      await AsyncStorage.removeItem(CLUBS_CACHE_KEY);
+    }
+  };
+
   useEffect(() => {
-    loadClubs();
+    // 1️⃣ instant offline render
+    loadCachedClubs();
+
+    // 2️⃣ refresh only if online
+    NetInfo.fetch().then(state => {
+      if (state.isConnected) {
+        loadClubs();
+      }
+    });
   }, []);
+
 
   /* ================= FILTER ================= */
   const filtered = useMemo(() => {
@@ -153,6 +191,17 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
   const confirmStatusChange = async () => {
     if (!statusModal) return;
 
+    // 🔌 CHECK INTERNET FIRST
+    const net = await NetInfo.fetch();
+
+    if (!net.isConnected) {
+      Alert.alert(
+        'No Internet',
+        'Internet connection is required to update club status.',
+      );
+      return;
+    }
+
     const nextStatus =
       statusModal.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 
@@ -162,38 +211,90 @@ const ClubManagementScreen = ({ openCreateClub }: Props) => {
         { status: nextStatus },
       );
 
+      setClubs(prev => {
+        const updated = prev.map(c =>
+          c.club_id === statusModal.club_id
+            ? { ...c, status: nextStatus }
+            : c,
+        );
+
+        AsyncStorage.setItem(
+          CLUBS_CACHE_KEY,
+          JSON.stringify(updated),
+        );
+
+        setVisible(updated.slice(0, page * PAGE_SIZE));
+        return updated;
+      });
+
       setStatusModal(null);
-      await loadClubs();
+
     } catch (err) {
-      console.error('STATUS UPDATE FAILED', err);
-      Alert.alert('Error', 'Status update failed');
+      Alert.alert(
+        'Update Failed',
+        'Unable to update status. Please try again.',
+      );
     }
   };
 
 
+
   /* ================= ACTIONS ================= */
-  const deleteClub = (club: Club) => {
+  const deleteClub = async (club: Club) => {
+    const net = await NetInfo.fetch();
+
+    // 🚫 BLOCK OFFLINE DELETE
+    if (!net.isConnected) {
+      Alert.alert(
+        'No Internet',
+        'Internet connection is required to delete a club.',
+      );
+      return;
+    }
+
     Alert.alert('Delete Club', `Delete ${club.club_name}?`, [
       { text: 'Cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await api.delete(`/clubs/${club.club_id}`);
-          loadClubs();
+          try {
+            await api.delete(`/clubs/${club.club_id}`);
+
+            setClubs(prev => {
+              const updated = prev.filter(
+                c => c.club_id !== club.club_id,
+              );
+
+              AsyncStorage.setItem(
+                CLUBS_CACHE_KEY,
+                JSON.stringify(updated),
+              );
+
+              setVisible(updated.slice(0, PAGE_SIZE));
+              return updated;
+            });
+          } catch (e) {
+            Alert.alert(
+              'Delete Failed',
+              'Unable to delete club. Please try again.',
+            );
+          }
         },
       },
     ]);
   };
 
+
   const downloadPdf = async (club: Club) => {
-    const res = await api.get(`/clubs/${club.club_id}`);
-
-    // ✅ unwrap backend response
-    const clubData = res.data?.data ?? res.data;
-
-    await generateClubPdf(clubData);
+    try {
+      await generateClubPdf(club);
+    } catch (e) {
+      console.error('PDF error', e);
+      Alert.alert('Error', 'Failed to generate PDF');
+    }
   };
+
 
 
   /* ================= TABLE HEADER ================= */

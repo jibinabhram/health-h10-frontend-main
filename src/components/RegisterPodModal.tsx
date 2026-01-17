@@ -38,7 +38,7 @@ const RegisterPodModal = ({ visible, onClose, onRegistered }: Props) => {
       const result = await createPodsBatch(Number(count));
       setSuccess(result);
     } catch (e) {
-      setError('Batch creation failed');
+      setError('Pod registration failed.Please turn on your internet');
     } finally {
       setLoading(false);
     }
