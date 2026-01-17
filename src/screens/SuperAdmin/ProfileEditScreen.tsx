@@ -93,7 +93,7 @@ const ProfileEditScreen = ({ goBack }: Props) => {
         hydrateProfile(JSON.parse(raw));
       }
     } catch (e) {
-      console.log('❌ Failed to load cached profile', e);
+      console.log('❌ Failed to load cached profile....', e);
     }
   };
 
