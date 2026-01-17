@@ -43,8 +43,7 @@ const PROFILE_CACHE_KEY = 'CACHED_PROFILE';
 
 /* ================= COMPONENT ================= */
 
-const ProfileEditScreen = () => {
-  const navigation = useNavigation<any>();
+const ProfileEditScreen = ({ goBack }: Props) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const isMounted = useRef(true);
@@ -52,13 +51,13 @@ const ProfileEditScreen = () => {
   const [role, setRole] = useState<Role | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
-  /* ===== SIDEBAR STATE ===== */
-  const [activeScreen, setActiveScreen] =
-    useState<ScreenType>('ProfileEdit');
-  const [collapsed, setCollapsed] = useState(false);
+//   /* ===== SIDEBAR STATE ===== */
+//   const [activeScreen, setActiveScreen] =
+//     useState<ScreenType>('ProfileEdit');
+//   const [collapsed, setCollapsed] = useState(false);
 
   /* ===== FORM STATE ===== */
-  const [superAdminId, setSuperAdminId] = useState<string | null>(null);
+//   const [superAdminId, setSuperAdminId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -201,18 +200,9 @@ const ProfileEditScreen = () => {
         if (!isMounted.current) return;
 
       Alert.alert('Success', 'Profile updated successfully', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+        { text: 'OK', onPress: goBack },
       ]);
-        Alert.alert('Success', 'Profile updated successfully', [
-          {
-            text: 'OK',
-            onPress: () => {
-              setActiveScreen('Dashboard');
-              navigation.replace('SuperAdminHome');
-            },
-          },
-        ]);
-      }, 100);
+    }, 0);
     } catch (err: any) {
       if (isMounted.current) {
         Alert.alert(

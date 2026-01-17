@@ -7,6 +7,11 @@ import SidebarClubAdmin, {
 } from '../../components/Sidebar/SidebarClubAdmin';
 import ClubAdminNavbar from '../../components/Navbar/ClubAdminNavbar';
 import ProfileEditScreen from '../SuperAdmin/ProfileEditScreen';
+import EventsScreen from './EventsScreen';
+import CreateEventScreen from './CreateEventScreen';
+import ImportFromESP32 from './ImportFromESP32';
+import { logout } from '../../utils/logout';
+import { useNavigation } from '@react-navigation/native';
 
 const Screen = ({ title }: { title: string }) => (
   <View style={styles.center}>
@@ -17,15 +22,69 @@ const Screen = ({ title }: { title: string }) => (
 const ClubAdminHome = () => {
   const [activeScreen, setActiveScreen] =
     useState<ScreenType | 'ProfileEdit'>('Dashboard');
-
+  const [importParams, setImportParams] = useState<any>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const navigation = useNavigation<any>();
+
+  const handleNavigate = (
+    screen: ScreenType | 'ProfileEdit' | 'Logout'
+  ) => {
+    if (screen === 'Logout') {
+      (async () => {
+        await logout();
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      })();
+
+      return;
+    }
+    setActiveScreen(screen);
+  };
 
   const renderScreen = () => {
-    if (activeScreen === 'ProfileEdit') {
-      return <ProfileEditScreen goBack={() => setActiveScreen('Dashboard')} />;
-    }
+    switch (activeScreen) {
+      case 'Dashboard':
+        return <Screen title="Dashboard" />;
 
-    return <Screen title={activeScreen} />;
+      case 'Event':
+        return (
+          <EventsScreen
+            openCreateEvent={() => setActiveScreen('CreateEvent')}
+          />
+        );
+
+      case 'CreateEvent':
+        return (
+          <CreateEventScreen
+            goBack={() => setActiveScreen('Event')}
+            goNext={(params) => {
+              setImportParams(params);
+              setActiveScreen('ImportFromESP32');
+            }}
+          />
+        );
+
+      case 'ImportFromESP32':
+        return (
+          <ImportFromESP32
+            {...importParams}
+            goBack={() => setActiveScreen('CreateEvent')}
+          />
+        );
+
+      case 'ProfileEdit':
+        return (
+          <ProfileEditScreen
+            goBack={() => setActiveScreen('Dashboard')}
+          />
+        );
+
+      default:
+        return <Screen title={activeScreen} />;
+    }
   };
 
   return (
@@ -34,7 +93,7 @@ const ClubAdminHome = () => {
         <View style={styles.navbarWrapper}>
           <ClubAdminNavbar
             title={activeScreen}
-            onNavigate={setActiveScreen}
+            onNavigate={handleNavigate}
           />
         </View>
 

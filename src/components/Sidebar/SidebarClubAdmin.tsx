@@ -13,11 +13,12 @@ const COLLAPSED_WIDTH = 64;
 export type ScreenType =
   | 'Dashboard'
   | 'Event'
+  | 'CreateEvent'
+  | 'ImportFromESP32'
   | 'Compare'
   | 'Cycle'
   | 'Advice'
   | 'Report';
-
 const MENU_ITEMS: {
   key: ScreenType;
   label: string;

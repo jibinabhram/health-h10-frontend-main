@@ -11,15 +11,19 @@ import {
   Modal,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
-import { useNavigation } from "@react-navigation/native";
 
 import { getEsp32Files } from "../../api/esp32Cache";
 import { extractDateFromFilename } from "../../utils/fileDate";
 
 const PLACEHOLDER_COLOR = "#94a3b8";
 
-export default function CreateEventScreen() {
-  const navigation = useNavigation<any>();
+export default function CreateEventScreen({
+  goBack,
+  goNext,
+}: {
+  goBack: () => void;
+  goNext: (payload: any) => void;
+}) {
 
   /* ================= EVENT DETAILS ================= */
 
@@ -40,7 +44,7 @@ export default function CreateEventScreen() {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [esp32Connected, setEsp32Connected] = useState(false);
   const [checkingEsp32, setCheckingEsp32] = useState(true);
-
+  const [importPayload, setImportPayload] = useState<any>(null);
   /* ================= LOAD FILES ON SCREEN OPEN ================= */
 
   useFocusEffect(
@@ -100,7 +104,7 @@ export default function CreateEventScreen() {
       return;
     }
 
-    navigation.navigate("ImportFromESP32", {
+    goNext({
       file: selectedFile,
       eventDraft: {
         eventName,
@@ -121,6 +125,10 @@ export default function CreateEventScreen() {
         style={styles.container}
         keyboardShouldPersistTaps="handled"
       >
+      <TouchableOpacity onPress={goBack} style={{ marginBottom: 12 }}>
+        <Text style={{ color: '#0284c7', fontWeight: '700' }}>← Back</Text>
+      </TouchableOpacity>
+
         <Text style={styles.title}>Create Event</Text>
 
         {!checkingEsp32 && !esp32Connected && (
