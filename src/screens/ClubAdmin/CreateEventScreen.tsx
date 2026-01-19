@@ -358,10 +358,8 @@ export default function CreateEventScreen({
           >
             {renderForm()}
           </ScrollView>
-        </KeyboardAvoidin\ gView>
+        </KeyboardAvoidingView>
       </View>
-
-
 
       {/* ===== FIXED BOTTOM BAR ===== */}
       <View style={styles.bottomBar}>

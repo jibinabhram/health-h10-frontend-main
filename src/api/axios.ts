@@ -8,7 +8,7 @@ import NetInfo from '@react-native-community/netinfo';
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { Accept: 'application/json' },
 });
 
 // Attach token
@@ -16,10 +16,10 @@ api.interceptors.request.use(
   async config => {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
     if (token) {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      };
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },

@@ -186,6 +186,7 @@ const ProfileEditScreen = ({ goBack }: Props) => {
     }
 
     try {
+      // ✅ 1. UPDATE BACKEND
       if (role === 'SUPER_ADMIN') {
         await updateSuperAdminProfile(userId, { name, email, phone });
         if (photo) await uploadSuperAdminImage(userId, photo);
@@ -196,20 +197,34 @@ const ProfileEditScreen = ({ goBack }: Props) => {
         if (photo) await uploadClubAdminImage(userId, photo);
       }
 
-      setTimeout(() => {
-        if (!isMounted.current) return;
+      // ✅ 2. UPDATE CACHE (THIS WAS MISSING)
+      const existing = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
+      const parsed = existing ? JSON.parse(existing) : {};
 
+      const updatedProfile = {
+        ...parsed,
+        name,
+        email,
+        phone,
+        role,
+        profile_image:
+          photo
+            ? photo.name // optimistic (navbar updates instantly)
+            : parsed.profile_image,
+      };
+
+      await saveProfileToCache(updatedProfile);
+
+      // ✅ 3. GO BACK
       Alert.alert('Success', 'Profile updated successfully', [
         { text: 'OK', onPress: goBack },
       ]);
-    }, 0);
+
     } catch (err: any) {
-      if (isMounted.current) {
-        Alert.alert(
-          'Error',
-          err?.response?.data?.message || 'Failed to update profile',
-        );
-      }
+      Alert.alert(
+        'Error',
+        err?.response?.data?.message || 'Failed to update profile',
+      );
     }
   };
 

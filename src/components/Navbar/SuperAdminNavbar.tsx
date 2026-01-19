@@ -18,6 +18,27 @@ import { useTheme } from '../context/ThemeContext';
 import { API_BASE_URL } from '../../utils/constants';
 import { logout } from '../../utils/logout';
 import type { ScreenType } from '../Sidebar/SidebarSuperAdmin';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PROFILE_CACHE_KEY = 'CACHED_PROFILE';
+
+const loadCachedProfile = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveProfileToCache = async (profile: any) => {
+  try {
+    await AsyncStorage.setItem(
+      PROFILE_CACHE_KEY,
+      JSON.stringify(profile),
+    );
+  } catch {}
+};
 
 const { width, height } = Dimensions.get('window');
 
@@ -55,11 +76,21 @@ const SuperAdminNavbar = ({
     let mounted = true;
 
     (async () => {
+      // 1️⃣ Load cached profile FIRST
+      const cached = await loadCachedProfile();
+      if (cached && mounted) {
+        setUser(cached);
+      }
+
+      // 2️⃣ Try network fetch
       try {
         const profile = await fetchProfile();
-        if (mounted) setUser(profile);
+        if (!mounted || !profile) return;
+
+        setUser(profile);
+        await saveProfileToCache(profile);
       } catch (err) {
-        console.log('NAVBAR PROFILE ERROR', err);
+        console.log('NAVBAR PROFILE (offline, using cache)');
       }
     })();
 

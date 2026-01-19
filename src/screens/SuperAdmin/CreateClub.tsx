@@ -98,6 +98,7 @@ const CreateClub = ({ goBack }: Props) => {
     try {
       setLoading(true);
 
+      // 1️⃣ CREATE CLUB (JSON ONLY)
       const payload = {
         club_name: clubName,
         sport,
@@ -108,14 +109,45 @@ const CreateClub = ({ goBack }: Props) => {
         pod_holder_ids: selectedPodHolders,
       };
 
-      await createClub(payload);
+      // 🔴 THIS LINE WAS `await createClub(payload);`
+      const res = await createClub(payload);
 
-       Alert.alert('Success', 'Club created successfully', [
-         { text: 'OK', onPress: handleGoBack },
-       ]);
+      // 2️⃣ EXTRACT ADMIN ID FROM RESPONSE
+      // (adjust if your response shape differs)
+      const adminId =
+        res?.data?.club?.club_admins?.[0]?.admin_id ||
+        res?.data?.admin?.admin_id;
 
+      // 3️⃣ UPLOAD PROFILE IMAGE (SEPARATE REQUEST)
+      if (clubImage && adminId) {
+        const formData = new FormData();
+
+        formData.append('file', {
+          uri: clubImage.uri!,
+          name: clubImage.fileName ?? `admin_${Date.now()}.jpg`,
+          type: clubImage.type ?? 'image/jpeg',
+        } as any);
+
+        await api.patch(
+          `/club-admin/${adminId}/image`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          },
+        );
+      }
+
+      // 4️⃣ DONE
+      Alert.alert('Success', 'Club created successfully', [
+        { text: 'OK', onPress: handleGoBack },
+      ]);
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Server error');
+      Alert.alert(
+        'Error',
+        e?.response?.data?.message || 'Server error',
+      );
     } finally {
       setLoading(false);
     }

@@ -78,7 +78,9 @@ const ClubAdminHome = () => {
       case 'ProfileEdit':
         return (
           <ProfileEditScreen
-            goBack={() => setActiveScreen('Dashboard')}
+            goBack={() => {
+              setActiveScreen('Dashboard');
+            }}
           />
         );
 

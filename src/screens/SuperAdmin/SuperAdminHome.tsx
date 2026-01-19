@@ -66,10 +66,10 @@ const SuperAdminHome = () => {
       case 'ProfileEdit':
         return (
           <ProfileEditScreen
-            goBack={() => setActiveScreen('Dashboard')}
-            onProfileUpdated={() =>
-              setProfileRefreshKey(v => v + 1)
-            }
+            goBack={() => {
+              setProfileRefreshKey(prev => prev + 1); // 🔥 THIS LINE
+              setActiveScreen('Dashboard');
+            }}
           />
         );
 
