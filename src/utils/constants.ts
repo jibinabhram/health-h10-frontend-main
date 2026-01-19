@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://192.168.1.16:3000';
+export const API_BASE_URL = 'http://192.168.1.11:3000';
 
 export const STORAGE_KEYS = {
   TOKEN: 'TOKEN',
