@@ -2,19 +2,18 @@ import React, { useEffect, useState, useCallback  } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { getMyClubPlayers } from '../../../api/players';
+import { loadPlayersUnified } from '../../../services/playerSync.service';
+
 
 const PlayersListScreen = ({ openCreate }: { openCreate: () => void }) => {
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadPlayers();
-  }, []);
 
   const loadPlayers = async () => {
     try {
       setLoading(true);
-      const data = await getMyClubPlayers();
+      const data = await loadPlayersUnified();
 
       if (Array.isArray(data)) {
         setPlayers(data);
@@ -59,13 +58,19 @@ const PlayersListScreen = ({ openCreate }: { openCreate: () => void }) => {
         keyExtractor={p => p.player_id}
         renderItem={({ item }) => {
           const podSerial =
-            item.player_pods?.[0]?.pod?.serial_number ?? 'Unassigned';
+            item.pod_serial ??
+            item.player_pods?.[0]?.pod?.serial_number ??
+            'Unassigned';
 
           const podHolderSerial =
-            item.player_pods?.[0]?.pod?.pod_holder?.serial_number ?? 'Unassigned';
+            item.pod_holder_serial ??
+            item.player_pods?.[0]?.pod?.pod_holder?.serial_number ??
+            'Unassigned';
 
           const clubName =
-            item.club?.club_name ?? '—';
+            item.club_name ??
+            item.club?.club_name ??
+            '—';
 
           return (
             <View style={styles.card}>

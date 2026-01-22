@@ -12,6 +12,7 @@ import {
   createPlayer,
   getMyClubPods,
 } from '../../../api/players';
+import { upsertPlayersToSQLite } from '../../../services/playerCache.service';
 
 const CreatePlayerScreen = ({ goBack }: { goBack: () => void }) => {
   const [form, setForm] = useState({
@@ -61,7 +62,8 @@ const CreatePlayerScreen = ({ goBack }: { goBack: () => void }) => {
     }
 
     try {
-      await createPlayer({
+      // 1️⃣ Create player in backend
+      const createdPlayer = await createPlayer({
         player_name: form.player_name,
         age: Number(form.age),
         jersey_number: Number(form.jersey_number),
@@ -69,17 +71,22 @@ const CreatePlayerScreen = ({ goBack }: { goBack: () => void }) => {
         pod_id: selectedPod,
       });
 
+      // 2️⃣ Cache immediately in SQLite ✅
+      upsertPlayersToSQLite([createdPlayer]);
+
+      // 3️⃣ Navigate back
       goBack();
     } catch (e: any) {
-        console.log('CREATE PLAYER ERROR 👉', e);
-        console.log('RESPONSE 👉', e?.response?.data);
-        console.log('MESSAGE 👉', e?.response?.data?.message);
+      console.log('CREATE PLAYER ERROR 👉', e);
+      console.log('RESPONSE 👉', e?.response?.data);
 
-        Alert.alert(
-          'Error',
-          JSON.stringify(e?.response?.data?.message, null, 2)
-        );
-      }
+      Alert.alert(
+        'Error',
+        e?.response?.data?.message ??
+        e?.message ??
+        'Failed to create player'
+      );
+    }
   };
 
   return (

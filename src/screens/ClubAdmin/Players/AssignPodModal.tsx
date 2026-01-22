@@ -70,9 +70,14 @@ const AssignPodModal = ({ visible, playerId, onClose, onSuccess }: Props) => {
       // 2️⃣ Assign pod
       await assignPodToPlayer(playerId, selectedPod);
 
-      Alert.alert('Success', 'Pod assigned to player');
+      // 🔁 3️⃣ REHYDRATE SQLite + UI
+      await loadPlayersUnified();
+
+      // 4️⃣ Notify parent screen (optional refresh)
       onSuccess();
-      onClose();
+
+      // 5️⃣ Close modal
+      onClose();;
     } catch (e: any) {
       if (e?.isOffline) {
         Alert.alert('Offline', 'No internet connection');

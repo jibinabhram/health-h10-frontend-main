@@ -2,6 +2,27 @@ import { db } from "./sqlite";
 
 export function initDB() {
   try {
+
+    db.execute(`
+      CREATE TABLE IF NOT EXISTS players (
+        player_id TEXT PRIMARY KEY,
+        player_name TEXT,
+        jersey_number INTEGER
+      );
+    `);
+
+    // 2️⃣ SAFE MIGRATIONS (existing installs)
+    try { db.execute(`ALTER TABLE players ADD COLUMN club_id TEXT`); } catch {}
+    try { db.execute(`ALTER TABLE players ADD COLUMN age INTEGER`); } catch {}
+    try { db.execute(`ALTER TABLE players ADD COLUMN position TEXT`); } catch {}
+
+    try { db.execute(`ALTER TABLE players ADD COLUMN pod_id TEXT`); } catch {}
+    try { db.execute(`ALTER TABLE players ADD COLUMN pod_serial TEXT`); } catch {}
+    try { db.execute(`ALTER TABLE players ADD COLUMN pod_holder_serial TEXT`); } catch {}
+
+    try { db.execute(`ALTER TABLE players ADD COLUMN club_name TEXT`); } catch {}
+    try { db.execute(`ALTER TABLE players ADD COLUMN updated_at INTEGER`); } catch {}
+
     /* ================= RAW SENSOR DATA ================= */
 
     db.execute(`
