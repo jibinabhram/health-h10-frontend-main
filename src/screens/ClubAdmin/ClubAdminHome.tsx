@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import PlayersListScreen from './Players/PlayersListScreen';
 import CreatePlayerScreen from './Players/CreatePlayerScreen';
 import AssignPlayersForSessionScreen from '../events/AssignPlayersForSessionScreen';
+import TrimSessionScreen from './TrimSessionScreen';
 const Screen = ({ title }: { title: string }) => (
   <View style={styles.center}>
     <Text style={{ fontSize: 20, fontWeight: '700' }}>{title}</Text>
@@ -76,10 +77,34 @@ const ClubAdminHome = () => {
             goBack={() => setActiveScreen('CreateEvent')}
             goNext={(params) => {
               setImportParams(params);
+              setActiveScreen('TrimSession');
+            }}
+          />
+        );
+      case 'TrimSession':
+        if (!importParams?.file) {
+          return (
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: "red", fontWeight: "700" }}>
+                Missing session file
+              </Text>
+            </View>
+          );
+        }
+
+        return (
+          <TrimSessionScreen
+            file={importParams.file}
+            sessionId={importParams.file.replace('.csv', '')}
+            eventDraft={importParams.eventDraft}
+            goBack={() => setActiveScreen('AssignPlayers')}
+            goNext={(params) => {
+              setImportParams(params);
               setActiveScreen('ImportFromESP32');
             }}
           />
         );
+
       case 'ImportFromESP32':
         return (
           <ImportFromESP32

@@ -119,6 +119,10 @@ export function initDB() {
         created_at INTEGER
       );
     `);
+    try { db.execute(`ALTER TABLE sessions ADD COLUMN file_start_ts INTEGER`); } catch {}
+    try { db.execute(`ALTER TABLE sessions ADD COLUMN file_end_ts INTEGER`); } catch {}
+    try { db.execute(`ALTER TABLE sessions ADD COLUMN trim_start_ts INTEGER`); } catch {}
+    try { db.execute(`ALTER TABLE sessions ADD COLUMN trim_end_ts INTEGER`); } catch {}
 
     /* ================= SAFE MIGRATIONS ================= */
 

@@ -19,7 +19,7 @@ const EventsScreen: React.FC<Props> = ({ openCreateEvent }) => {
           style={styles.createBtn}
           onPress={openCreateEvent}
         >
-          <Text style={styles.createText}>Create Event</Text>
+          <Text style={styles.createText}>Event</Text>
         </TouchableOpacity>
       </View>
 
