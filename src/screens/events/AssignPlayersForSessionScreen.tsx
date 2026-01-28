@@ -12,8 +12,10 @@ import {
   saveSessionPlayers,
   saveSessionPodOverrides,
 } from "../../services/sessionPlayer.service";
+import { db } from "../../db/sqlite";
 
 export default function AssignPlayersForSessionScreen({
+  file,
   sessionId,
   eventDraft,
   goNext,
@@ -63,12 +65,37 @@ export default function AssignPlayersForSessionScreen({
   };
 
   const onNext = async () => {
+    // 1️⃣ CREATE SESSION (ONCE)
+    const result = await db.execute(
+      `
+      INSERT OR IGNORE INTO sessions (
+        session_id,
+        event_name,
+        event_type,
+        event_date,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?)
+      `,
+      [
+        sessionId,
+        eventDraft.eventName,
+        eventDraft.eventType,
+        eventDraft.eventDate,
+        Date.now(),
+      ]
+    );
+    console.log("🆕 SESSION INSERT rowsAffected:", result.rowsAffected);
+    console.log("🆕 SESSION CREATED / VERIFIED:", sessionId);
+
+    // 2️⃣ SAVE ASSIGNMENTS
     await saveSessionPlayers(sessionId, assigned);
     await saveSessionPodOverrides(sessionId, podMap);
 
+    // 3️⃣ GO TO TRIM
     goNext({
       step: "Trim",
-      file: sessionId + ".csv",
+      file,
+      sessionId,
       eventDraft,
     });
   };

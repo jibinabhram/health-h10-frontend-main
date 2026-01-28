@@ -64,7 +64,7 @@ const ClubAdminHome = () => {
           <CreateEventScreen
             goBack={() => setActiveScreen('Event')}
             goNext={(params) => {
-              setImportParams(params);
+              setImportParams(prev => ({ ...prev, ...params }));
               setActiveScreen('AssignPlayers');
             }}
           />
@@ -72,11 +72,12 @@ const ClubAdminHome = () => {
       case 'AssignPlayers':
         return (
           <AssignPlayersForSessionScreen
+            file={importParams.file}
             sessionId={importParams.file.replace('.csv', '')}
             eventDraft={importParams.eventDraft}
             goBack={() => setActiveScreen('CreateEvent')}
             goNext={(params) => {
-              setImportParams(params);
+              setImportParams(prev => ({ ...prev, ...params }));
               setActiveScreen('TrimSession');
             }}
           />
@@ -95,11 +96,11 @@ const ClubAdminHome = () => {
         return (
           <TrimSessionScreen
             file={importParams.file}
-            sessionId={importParams.file.replace('.csv', '')}
+            sessionId={importParams.sessionId}
             eventDraft={importParams.eventDraft}
             goBack={() => setActiveScreen('AssignPlayers')}
             goNext={(params) => {
-              setImportParams(params);
+              setImportParams(prev => ({ ...prev, ...params }));
               setActiveScreen('ImportFromESP32');
             }}
           />
