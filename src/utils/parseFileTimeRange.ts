@@ -1,22 +1,28 @@
-function parseFileTimeRange(filename?: string) {
-  if (!filename) {
-    throw new Error("TrimSessionScreen: file is undefined");
-  }
+export function parseFileTimeRange(filename?: string) {
+  if (!filename) return null;
 
+  // remove extension if present
   const clean = filename.replace(".csv", "");
 
-  if (!clean.includes("_")) {
-    throw new Error("Filename does not contain start_end timestamps");
-  }
+  // Supported format:
+  // 2025-11-18T00-18-50_2025-11-18T00-19-50
+  const parts = clean.split("_");
+  if (parts.length !== 2) return null;
 
-  const [startStr, endStr] = clean.split("_");
+  const parsePart = (p: string) => {
+    // p = 2025-11-18T00-18-50
+    const [date, time] = p.split("T");
+    if (!date || !time) return NaN;
 
-  const start = new Date(startStr.replace(" ", "T")).getTime();
-  const end = new Date(endStr.replace(" ", "T")).getTime();
+    // 00-18-50 → 00:18:50
+    const iso = `${date}T${time.replace(/-/g, ":")}`;
+    return new Date(iso).getTime();
+  };
 
-  if (isNaN(start) || isNaN(end) || end <= start) {
-    throw new Error("Invalid filename time range");
-  }
+  const start = parsePart(parts[0]);
+  const end = parsePart(parts[1]);
+
+  if (isNaN(start) || isNaN(end) || end <= start) return null;
 
   return {
     fileStartMs: start,

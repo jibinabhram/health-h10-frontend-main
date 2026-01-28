@@ -8,34 +8,11 @@ import {
   Dimensions,
 } from "react-native";
 import { db } from "../../db/sqlite";
+import { parseFileTimeRange } from "../../utils/parseFileTimeRange";
 
 /* =====================================================
    HELPERS
 ===================================================== */
-
-function parseFileTimeRange(filename?: string) {
-  if (!filename) {
-    return null;
-  }
-
-  const clean = filename.replace(".csv", "");
-
-  if (!clean.includes("_")) return null;
-
-  const [startStr, endStr] = clean.split("_");
-
-  const start = new Date(startStr.replace(" ", "T")).getTime();
-  const end = new Date(endStr.replace(" ", "T")).getTime();
-
-  if (isNaN(start) || isNaN(end) || end <= start) return null;
-
-  return {
-    fileStartMs: start,
-    fileEndMs: end,
-    durationMs: end - start,
-  };
-}
-
 
 function formatTime(ms: number) {
   return new Date(ms).toLocaleTimeString([], {
@@ -62,8 +39,9 @@ export default function TrimSessionScreen({
   goBack: () => void;
   goNext: (params: any) => void;
 }) {
+  console.log("📄 Trim file:", file);
   const parsed = parseFileTimeRange(file);
-
+  console.log("🧠 Parsed:", parsed);
   if (!parsed) {
     return (
       <View style={styles.container}>
