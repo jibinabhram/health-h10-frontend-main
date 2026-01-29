@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 
 import SidebarClubAdmin, {
   ScreenType,
 } from '../../components/Sidebar/SidebarClubAdmin';
 import ClubAdminNavbar from '../../components/Navbar/ClubAdminNavbar';
 import ProfileEditScreen from '../SuperAdmin/ProfileEditScreen';
+
 import EventsScreen from './EventsScreen';
 import CreateEventScreen from './CreateEventScreen';
-import ImportFromESP32 from './ImportFromESP32';
-import { logout } from '../../utils/logout';
-import { useNavigation } from '@react-navigation/native';
-import PlayersListScreen from './Players/PlayersListScreen';
-import CreatePlayerScreen from './Players/CreatePlayerScreen';
 import AssignPlayersForSessionScreen from '../events/AssignPlayersForSessionScreen';
 import TrimSessionScreen from './TrimSessionScreen';
+import AddExerciseScreen from './AddExerciseScreen'; // ✅ ADDED
+import ImportFromESP32 from './ImportFromESP32';
+
+import PlayersListScreen from './Players/PlayersListScreen';
+import CreatePlayerScreen from './Players/CreatePlayerScreen';
+import { logout } from '../../utils/logout';
+
 const Screen = ({ title }: { title: string }) => (
   <View style={styles.center}>
     <Text style={{ fontSize: 20, fontWeight: '700' }}>{title}</Text>
@@ -29,7 +33,10 @@ const ClubAdminHome = () => {
     useState(false);
   const [importParams, setImportParams] = useState<any>(null);
   const [collapsed, setCollapsed] = useState(false);
+
   const navigation = useNavigation<any>();
+
+  /* ================= NAV ACTIONS ================= */
 
   const handleNavigate = (action: 'ProfileEdit' | 'Logout') => {
     if (action === 'Logout') {
@@ -42,10 +49,13 @@ const ClubAdminHome = () => {
       })();
       return;
     }
+
     if (action === 'ProfileEdit') {
       setShowProfileEdit(true);
     }
   };
+
+  /* ================= SCREEN RENDER ================= */
 
   const renderScreen = () => {
     switch (activeScreen) {
@@ -69,6 +79,7 @@ const ClubAdminHome = () => {
             }}
           />
         );
+
       case 'AssignPlayers':
         return (
           <AssignPlayersForSessionScreen
@@ -81,17 +92,9 @@ const ClubAdminHome = () => {
             }}
           />
         );
-      case 'TrimSession':
-        if (!importParams?.file) {
-          return (
-            <View style={{ padding: 16 }}>
-              <Text style={{ color: "red", fontWeight: "700" }}>
-                Missing session file
-              </Text>
-            </View>
-          );
-        }
 
+      /* ================= TRIM SESSION ================= */
+      case 'TrimSession':
         return (
           <TrimSessionScreen
             file={importParams.file}
@@ -99,12 +102,30 @@ const ClubAdminHome = () => {
             eventDraft={importParams.eventDraft}
             goBack={() => setActiveScreen('AssignPlayers')}
             goNext={(params) => {
-              setImportParams(params);
-              setActiveScreen('ImportFromESP32');
+              setImportParams({
+                ...importParams,
+                sessionId: importParams.file.replace('.csv', ''),
+                trimStartTs: params.trimStartTs,
+                trimEndTs: params.trimEndTs,
+              });
+              setActiveScreen('AddExercise'); // ✅ FIXED
             }}
           />
         );
 
+      /* ================= ADD EXERCISE ================= */
+      case 'AddExercise':
+        return (
+          <AddExerciseScreen
+            sessionId={importParams.sessionId}
+            trimStartTs={importParams.trimStartTs}
+            trimEndTs={importParams.trimEndTs}
+            goBack={() => setActiveScreen('TrimSession')}
+            goNext={() => setActiveScreen('Event')}
+          />
+        );
+
+      /* ================= IMPORT ================= */
       case 'ImportFromESP32':
         return (
           <ImportFromESP32
@@ -113,6 +134,7 @@ const ClubAdminHome = () => {
           />
         );
 
+      /* ================= PLAYERS ================= */
       case 'Players':
         return (
           <PlayersListScreen
@@ -126,10 +148,14 @@ const ClubAdminHome = () => {
             goBack={() => setActiveScreen('Players')}
           />
         );
+
       default:
         return <Screen title={activeScreen} />;
     }
   };
+
+  /* ================= ROOT ================= */
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.root}>
@@ -164,6 +190,8 @@ const ClubAdminHome = () => {
 };
 
 export default ClubAdminHome;
+
+/* ================= STYLES ================= */
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#020617' },
