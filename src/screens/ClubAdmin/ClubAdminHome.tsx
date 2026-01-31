@@ -20,6 +20,9 @@ import PlayersListScreen from './Players/PlayersListScreen';
 import CreatePlayerScreen from './Players/CreatePlayerScreen';
 import { logout } from '../../utils/logout';
 
+import ManageEventsScreen from './ManageEventsScreen';
+import TeamSettingsScreen from './TeamSettingsScreen';
+
 const Screen = ({ title }: { title: string }) => (
   <View style={styles.center}>
     <Text style={{ fontSize: 20, fontWeight: '700' }}>{title}</Text>
@@ -38,7 +41,7 @@ const ClubAdminHome = () => {
 
   /* ================= NAV ACTIONS ================= */
 
-  const handleNavigate = (action: 'ProfileEdit' | 'Logout') => {
+  const handleNavigate = (action: 'ProfileEdit' | 'Logout' | 'ManageEvents' | 'TeamSettings') => {
     if (action === 'Logout') {
       (async () => {
         await logout();
@@ -52,6 +55,17 @@ const ClubAdminHome = () => {
 
     if (action === 'ProfileEdit') {
       setShowProfileEdit(true);
+      return; // Ensure we don't switch screen underneath overlay if that's how it behaves, though ProfileEditScreen seems to replace content
+    }
+
+    if (action === 'ManageEvents') {
+      setActiveScreen('ManageEvents');
+      setShowProfileEdit(false); // Close profile edit overlay if open
+    }
+
+    if (action === 'TeamSettings') {
+      setActiveScreen('TeamSettings');
+      setShowProfileEdit(false);
     }
   };
 
@@ -69,10 +83,29 @@ const ClubAdminHome = () => {
           />
         );
 
+      case 'TeamSettings':
+        return <TeamSettingsScreen />;
+
+      case 'ManageEvents':
+        return (
+          <ManageEventsScreen
+            openCreateEvent={() => {
+              setImportParams(null);
+              setActiveScreen('CreateEvent');
+            }}
+            onEditEvent={(event) => {
+              console.log("Editing event:", event);
+              setImportParams({ initialEventData: event });
+              setActiveScreen('CreateEvent');
+            }}
+          />
+        );
+
       case 'CreateEvent':
         return (
           <CreateEventScreen
-            goBack={() => setActiveScreen('Event')}
+            initialData={importParams?.initialEventData}
+            goBack={() => setActiveScreen('ManageEvents')}
             goNext={(params) => {
               setImportParams(prev => ({ ...prev, ...params }));
               setActiveScreen('AssignPlayers');
